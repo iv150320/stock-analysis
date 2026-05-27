@@ -1,0 +1,8 @@
+yfinance>=0.2.0
+matplotlib>=3.5.0
+seaborn>=0.12.0
+pandas>=1.5.0
+numpy>=1.24.0
+flask>=3.0.0
+flask-session>=0.8.0
+gunicorn>=21.2.0

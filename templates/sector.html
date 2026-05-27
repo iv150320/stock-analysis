@@ -1,0 +1,96 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h1><i class="fas fa-layer-group me-2"></i> Sector Analysis</h1>
+    <p class="mb-0">Explore performance and volatility across stocks within a specific sector.</p>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="post" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label fw-semibold text-muted small">Sector</label>
+                <select name="sector" class="form-select">
+                    <option value="">Select a sector...</option>
+                    {% for s in sectors %}
+                    <option value="{{ s }}" {% if s == sector_name %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold text-muted small">Period</label>
+                <select name="period" class="form-select">
+                    <option value="1mo" {% if period == '1mo' %}selected{% endif %}>1 Month</option>
+                    <option value="3mo" {% if period == '3mo' %}selected{% endif %}>3 Months</option>
+                    <option value="6mo" {% if period == '6mo' %}selected{% endif %}>6 Months</option>
+                    <option value="1y" {% if period == '1y' %}selected{% endif %}>1 Year</option>
+                    <option value="2y" {% if period == '2y' %}selected{% endif %}>2 Years</option>
+                    <option value="5y" {% if period == '5y' %}selected{% endif %}>5 Years</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100" type="submit"><i class="fas fa-magnifying-glass me-1"></i> Analyze</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger"><i class="fas fa-circle-exclamation me-2"></i>{{ error }}</div>
+{% endif %}
+
+{% if stocks %}
+<div class="card mb-4">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-building me-2"></i>{{ sector_name }} — {{ stocks|length }} Stocks</span>
+            <span class="badge bg-primary rounded-pill">{{ period }}</span>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead><tr><th>#</th><th>Symbol</th><th class="text-end">Return</th><th class="text-end">Volatility</th><th class="text-end">Risk/Reward</th></tr></thead>
+                <tbody>
+                {% for s in stocks %}
+                {% set ret_val = s.return | replace('+', '') | replace('%', '') | float %}
+                {% set vol_val = s.volatility | replace('%', '') | float %}
+                {% set ratio = (ret_val / vol_val * 100) | round(1) if vol_val > 0 else 0 %}
+                <tr>
+                    <td class="text-muted">{{ loop.index }}</td>
+                    <td><span class="badge-symbol">{{ s.symbol }}</span></td>
+                    <td class="text-end {% if s.return.startswith('+') %}up{% else %}down{% endif %}">{{ s.return }}</td>
+                    <td class="text-end">{{ s.volatility }}</td>
+                    <td class="text-end">
+                        {% if ratio > 1 %}
+                        <span class="badge bg-success-subtle text-success">{{ ratio }}</span>
+                        {% elif ratio > 0 %}
+                        <span class="badge bg-warning-subtle text-warning">{{ ratio }}</span>
+                        {% else %}
+                        <span class="badge bg-danger-subtle text-danger">{{ ratio }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    {% for name, path in charts.items() %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0"><i class="fas fa-image me-2"></i>{{ name }}</h6></div>
+            <div class="card-body text-center p-3">
+                <img class="chart-img" src="/charts/{{ path | basename }}" alt="{{ name }}">
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
