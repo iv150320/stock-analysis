@@ -1,28 +1,26 @@
 {% extends "layout.html" %}
-{% block title %}StockScope &mdash; Sector Analysis{% endblock %}
+{% block title %}StockScope &mdash; Sectors{% endblock %}
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-start mb-4 fade-in">
-  <div>
-    <h1 class="page-title"><i class="fas fa-layer-group me-2" style="color:var(--purple);"></i> Sector Analysis</h1>
-    <p class="page-subtitle">Deep-dive into stock performance by market sector</p>
-  </div>
+<div class="page-head anim">
+  <h1><i class="fas fa-layer-group" style="color:var(--c-purple);margin-right:10px"></i>Sector Analysis</h1>
+  <p>Deep-dive into stock performance by market sector</p>
 </div>
 
-<div class="search-card fade-in d1">
-  <form method="post" class="row g-3 align-items-end">
-    <div class="col-md-5">
-      <label class="form-label">SECTOR</label>
-      <select name="sector" class="form-select">
+<div class="search-box anim d1">
+  <form method="post" class="form-row">
+    <div class="form-group">
+      <label>Sector</label>
+      <select name="sector">
         <option value="">Choose a sector...</option>
         {% for s in sectors %}
         <option value="{{ s }}" {% if s == sector_name %}selected{% endif %}>{{ s }}</option>
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-4">
-      <label class="form-label">PERIOD</label>
-      <select name="period" class="form-select">
+    <div class="form-group">
+      <label>Period</label>
+      <select name="period">
         <option value="1mo" {% if period == '1mo' %}selected{% endif %}>1 Month</option>
         <option value="3mo" {% if period == '3mo' %}selected{% endif %}>3 Months</option>
         <option value="6mo" {% if period == '6mo' %}selected{% endif %}>6 Months</option>
@@ -30,88 +28,68 @@
         <option value="2y" {% if period == '2y' %}selected{% endif %}>2 Years</option>
       </select>
     </div>
-    <div class="col-md-3">
-      <button class="btn btn-primary w-100" type="submit"><i class="fas fa-bolt me-2"></i>Analyze</button>
+    <div class="form-group" style="flex:0;min-width:auto">
+      <label>&nbsp;</label>
+      <button class="btn" type="submit"><i class="fas fa-bolt"></i> Analyze</button>
     </div>
   </form>
 </div>
 
 {% if error %}
-<div class="alert alert-danger fade-in"><i class="fas fa-circle-exclamation me-2"></i>{{ error }}</div>
+<div class="alert"><i class="fas fa-circle-exclamation"></i> {{ error }}</div>
 {% endif %}
 
 {% if stocks %}
-<div class="row g-3 mb-4">
-  <div class="col-md-4 fade-in d1">
-    <div class="card stat-card glow-blue">
-      <div class="card-body">
-        <div class="d-flex align-items-center gap-3">
-          <div class="stat-icon" style="background:var(--blue-dim);color:var(--blue);"><i class="fas fa-building"></i></div>
-          <div>
-            <div class="stat-label">{{ sector_name }}</div>
-            <div class="stat-value">{{ n_stocks }} <span style="font-size:0.9rem;font-weight:600;color:var(--text-muted);">stocks</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
+<div class="row gap24">
+  <div class="col-4 anim d1">
+    <div class="card"><div class="stat">
+      <div class="stat-ico" style="background:var(--c-blue-bg);color:var(--c-blue)"><i class="fas fa-building"></i></div>
+      <div><div class="stat-lbl">{{ sector_name }}</div><div class="stat-val">{{ n_stocks }} <span style="font-size:.75rem;font-weight:600;color:var(--c-text3)">stocks</span></div></div>
+    </div></div>
   </div>
-  <div class="col-md-4 fade-in d2">
-    <div class="card stat-card glow-green">
-      <div class="card-body">
-        <div class="d-flex align-items-center gap-3">
-          <div class="stat-icon" style="background:var(--green-dim);color:var(--green);"><i class="fas fa-percentage"></i></div>
-          <div>
-            <div class="stat-label">Avg Return</div>
-            <div class="stat-value {% if avg_ret > 0 %}up{% else %}down{% endif %}">{{ avg_ret }}%</div>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="col-4 anim d2">
+    <div class="card"><div class="stat">
+      <div class="stat-ico" style="background:var(--c-green-bg);color:var(--c-green)"><i class="fas fa-percentage"></i></div>
+      <div><div class="stat-lbl">Avg Return</div><div class="stat-val {% if avg_ret > 0 %}up{% else %}down{% endif %}">{{ avg_ret }}%</div></div>
+    </div></div>
   </div>
-  <div class="col-md-4 fade-in d3">
-    <div class="card stat-card glow-purple">
-      <div class="card-body">
-        <div class="d-flex align-items-center gap-3">
-          <div class="stat-icon" style="background:var(--purple-dim);color:var(--purple);"><i class="fas fa-wave-square"></i></div>
-          <div>
-            <div class="stat-label">Avg Volatility</div>
-            <div class="stat-value">{{ avg_vol }}%</div>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="col-4 anim d3">
+    <div class="card"><div class="stat">
+      <div class="stat-ico" style="background:var(--c-purple-bg);color:var(--c-purple)"><i class="fas fa-wave-square"></i></div>
+      <div><div class="stat-lbl">Avg Volatility</div><div class="stat-val">{{ avg_vol }}%</div></div>
+    </div></div>
   </div>
 </div>
 
-<div class="row g-4 mb-4">
-  <div class="col-lg-7 fade-in d1">
+<div class="row gap24">
+  <div class="col-7 anim d1">
     <div class="card">
-      <div class="card-header">
-        <div class="header-icon" style="background:var(--green-dim);color:var(--green);"><i class="fas fa-chart-bar"></i></div>
-        Stock Returns &mdash; <span class="badge-symbol ms-1">{{ sector_name }}</span>
+      <div class="card-head">
+        <div class="ico" style="background:var(--c-green-bg);color:var(--c-green)"><i class="fas fa-chart-bar"></i></div>
+        Stock Returns &mdash; <span class="tag" style="margin-left:6px">{{ sector_name }}</span>
       </div>
       <div class="card-body">
-        <div class="chart-wrap h-lg"><canvas id="stockChart"></canvas></div>
+        <div class="chart-box h400"><canvas id="stockChart"></canvas></div>
       </div>
     </div>
   </div>
-  <div class="col-lg-5 fade-in d2">
-    <div class="card" style="height:100%;">
-      <div class="card-header">
-        <div class="header-icon" style="background:var(--amber-dim);color:var(--amber);"><i class="fas fa-ranking-star"></i></div>
-        Stock Rankings
+  <div class="col-5 anim d2">
+    <div class="card" style="height:100%">
+      <div class="card-head">
+        <div class="ico" style="background:var(--c-yellow-bg);color:var(--c-yellow)"><i class="fas fa-ranking-star"></i></div>
+        Rankings
       </div>
-      <div class="card-body p-0">
-        <div style="max-height:400px;overflow-y:auto;">
-          <table class="table table-hover mb-0">
-            <thead><tr><th>#</th><th>Symbol</th><th class="text-end">Return</th><th class="text-end">Vol</th></tr></thead>
+      <div class="card-body" style="padding:0">
+        <div class="scroll-y" style="max-height:420px">
+          <table>
+            <thead><tr><th>#</th><th>Symbol</th><th style="text-align:right">Return</th><th style="text-align:right">Vol</th></tr></thead>
             <tbody>
             {% for s in stocks %}
             <tr>
-              <td class="text-muted" style="font-weight:600;">{{ loop.index }}</td>
-              <td><span class="badge-symbol">{{ s.symbol }}</span></td>
-              <td class="text-end font-monospace {% if s.return > 0 %}up{% else %}down{% endif %}">{{ s.return }}%</td>
-              <td class="text-end font-monospace">{{ s.volatility }}%</td>
+              <td style="color:var(--c-text3);font-weight:700">{{ loop.index }}</td>
+              <td><span class="tag">{{ s.symbol }}</span></td>
+              <td class="mono" style="text-align:right{% if s.return > 0 %};color:var(--c-green){% else %};color:var(--c-red){% endif %}">{{ s.return }}%</td>
+              <td class="mono" style="text-align:right">{{ s.volatility }}%</td>
             </tr>
             {% endfor %}
             </tbody>
@@ -122,106 +100,72 @@
   </div>
 </div>
 
-<div class="row g-4">
-  <div class="col-lg-12 fade-in d1">
+<div class="row gap24">
+  <div class="col-12 anim d1">
     <div class="card">
-      <div class="card-header">
-        <div class="header-icon" style="background:var(--purple-dim);color:var(--purple);"><i class="fas fa-crosshairs"></i></div>
+      <div class="card-head">
+        <div class="ico" style="background:var(--c-purple-bg);color:var(--c-purple)"><i class="fas fa-crosshairs"></i></div>
         Risk / Return Map
       </div>
       <div class="card-body">
-        <div class="chart-wrap h-lg"><canvas id="scatterChart"></canvas></div>
+        <div class="chart-box h400"><canvas id="scatterChart"></canvas></div>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-var _d = {
-  rets: {{ stock_returns | safe }},
-  vols: {{ stock_vols | safe }},
-  labels: {{ stock_labels | safe }}
+var D={
+  r:{{ stock_returns | safe }},
+  v:{{ stock_vols | safe }},
+  l:{{ stock_labels | safe }}
 };
 
-function buildCharts() {
-  registerChart('stockChart', {
-    type: 'bar',
-    data: {
-      labels: _d.labels,
-      datasets: [{
-        label: 'Return %',
-        data: _d.rets,
-        backgroundColor: _d.rets.map(function(v) { return v >= 0 ? 'rgba(0,214,143,0.55)' : 'rgba(255,71,87,0.55)'; }),
-        borderColor: _d.rets.map(function(v) { return v >= 0 ? '#00d68f' : '#ff4757'; }),
-        borderWidth: 2,
-        borderRadius: 6,
-        borderSkipped: false,
+function buildCharts(){
+  mk('stockChart',{
+    type:'bar',
+    data:{
+      labels:D.l,
+      datasets:[{
+        data:D.r,
+        backgroundColor:D.r.map(function(v){return v>=0?'rgba(0,230,118,.55)':'rgba(255,23,68,.55)'}),
+        borderColor:D.r.map(function(v){return v>=0?'#00e676':'#ff1744'}),
+        borderWidth:2,borderRadius:5,borderSkipped:false
       }]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      indexAxis: 'y',
-      plugins: {
-        legend: { display: false },
-        tooltip: Object.assign(autoTip(), {
-          callbacks: { label: function(ctx) { return ctx.parsed.x.toFixed(2) + '%'; } }
-        })
-      },
-      scales: {
-        x: { grid: autoGrid(), ticks: Object.assign(autoTicks(), { callback: function(v) { return v + '%'; } }) },
-        y: { grid: { display: false }, ticks: autoTicks() }
-      }
+    options:{
+      indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:Object.assign(TT(),{callbacks:{label:function(c){return c.parsed.x.toFixed(1)+'%'}}})},
+      scales:{x:{grid:G(),ticks:Object.assign(T(),{callback:function(v){return v+'%'}})},y:{grid:{display:false},ticks:T()}}
     }
   });
 
-  var scatterData = _d.labels.map(function(l, i) {
-    return { x: _d.vols[i], y: _d.rets[i], label: l };
-  });
+  var pts=D.l.map(function(l,i){return{x:D.v[i],y:D.r[i],label:l}});
 
-  registerChart('scatterChart', {
-    type: 'scatter',
-    data: {
-      datasets: [{
-        label: 'Stocks',
-        data: scatterData,
-        backgroundColor: _d.rets.map(function(v) { return v >= 0 ? 'rgba(0,214,143,0.5)' : 'rgba(255,71,87,0.5)'; }),
-        borderColor: _d.rets.map(function(v) { return v >= 0 ? '#00d68f' : '#ff4757'; }),
-        borderWidth: 2,
-        pointRadius: 8,
-        pointHoverRadius: 12,
-        pointHoverBorderWidth: 3,
+  mk('scatterChart',{
+    type:'scatter',
+    data:{
+      datasets:[{
+        data:pts,
+        backgroundColor:D.r.map(function(v){return v>=0?'rgba(0,230,118,.45)':'rgba(255,23,68,.45)'}),
+        borderColor:D.r.map(function(v){return v>=0?'#00e676':'#ff1744'}),
+        borderWidth:2,pointRadius:8,pointHoverRadius:11
       }]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: Object.assign(autoTip(), {
-          callbacks: {
-            label: function(ctx) {
-              return ctx.raw.label + ': ' + ctx.raw.y.toFixed(2) + '% return, ' + ctx.raw.x.toFixed(2) + '% vol';
-            }
-          }
-        })
+    options:{
+      plugins:{
+        legend:{display:false},
+        tooltip:Object.assign(TT(),{callbacks:{label:function(c){return c.raw.label+': '+c.raw.y.toFixed(1)+'% ret, '+c.raw.x.toFixed(1)+'% vol'}}})
       },
-      scales: {
-        x: {
-          title: { display: true, text: 'Volatility %', color: '#5a6480', font: { weight: '800', size: 12 } },
-          grid: autoGrid(),
-          ticks: Object.assign(autoTicks(), { callback: function(v) { return v + '%'; } })
-        },
-        y: {
-          title: { display: true, text: 'Return %', color: '#5a6480', font: { weight: '800', size: 12 } },
-          grid: autoGrid(),
-          ticks: Object.assign(autoTicks(), { callback: function(v) { return v + '%'; } })
-        }
+      scales:{
+        x:{title:{display:true,text:'Volatility %',color:'#4e566d',font:{weight:'800',size:11}},grid:G(),ticks:Object.assign(T(),{callback:function(v){return v+'%'}})},
+        y:{title:{display:true,text:'Return %',color:'#4e566d',font:{weight:'800',size:11}},grid:G(),ticks:Object.assign(T(),{callback:function(v){return v+'%'}})}
       }
     }
   });
 }
 
-function rebuildCharts() { buildCharts(); }
-document.addEventListener('DOMContentLoaded', buildCharts);
+document.addEventListener('DOMContentLoaded',buildCharts);
 </script>
 {% endif %}
 {% endblock %}
