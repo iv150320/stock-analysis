@@ -1,292 +1,296 @@
 {% extends "layout.html" %}
 {% block content %}
 
-<div class="hero animate-in">
-    <div class="row align-items-center g-4">
-        <div class="col-lg-7">
-            <h1><i class="fas fa-chart-simple me-2"></i> Market Dashboard</h1>
-            <p class="mb-0">Interactive S&P 500 analysis across 160+ stocks and 8 sectors. Real-time data via Yahoo Finance.</p>
-        </div>
-        <div class="col-lg-5">
-            <div class="row g-3">
-                <div class="col-4 hero-stat">
-                    <span class="num up">{{ n_up }}</span>
-                    <span class="label"><i class="fas fa-arrow-up me-1"></i>Up</span>
-                </div>
-                <div class="col-4 hero-stat">
-                    <span class="num down">{{ n_down }}</span>
-                    <span class="label"><i class="fas fa-arrow-down me-1"></i>Down</span>
-                </div>
-                <div class="col-4 hero-stat">
-                    <span class="num countup" data-target="{{ avg_ret }}" data-suffix="%">{{ avg_ret }}%</span>
-                    <span class="label"><i class="fas fa-percentage me-1"></i>Avg Ret</span>
-                </div>
-            </div>
-        </div>
+<div class="hero fade-in">
+  <div class="row align-items-center g-4">
+    <div class="col-lg-7">
+      <h1><i class="fas fa-chart-simple me-2" style="color:var(--blue);"></i> Market Dashboard</h1>
+      <p>Interactive S&P 500 analysis across 160+ stocks and 8 sectors. Real-time data via Yahoo Finance.</p>
     </div>
+    <div class="col-lg-5">
+      <div class="row g-3">
+        <div class="col-4 hero-stat">
+          <span class="num up">{{ n_up }}</span>
+          <span class="label"><i class="fas fa-arrow-up me-1"></i>Up</span>
+        </div>
+        <div class="col-4 hero-stat">
+          <span class="num down">{{ n_down }}</span>
+          <span class="label"><i class="fas fa-arrow-down me-1"></i>Down</span>
+        </div>
+        <div class="col-4 hero-stat">
+          <span class="num {% if avg_ret > 0 %}up{% else %}down{% endif %}">{{ avg_ret }}%</span>
+          <span class="label"><i class="fas fa-percentage me-1"></i>Avg Ret</span>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 {% if error %}
-<div class="alert alert-danger">{{ error }}</div>
+<div class="alert alert-danger"><i class="fas fa-circle-exclamation me-2"></i>{{ error }}</div>
 {% endif %}
 
 <div class="row g-3 mb-4">
-    <div class="col-md-3 animate-in d1">
-        <div class="card stat-card">
-            <div class="glow" style="background:var(--blue);"></div>
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="stat-icon" style="background:rgba(79,172,254,0.12);color:var(--blue);"><i class="fas fa-percentage"></i></div>
-                    <div>
-                        <div class="stat-label">Avg Return</div>
-                        <div class="stat-value {% if avg_ret > 0 %}up{% else %}down{% endif %}">
-                            <span class="countup" data-target="{{ avg_ret }}" data-suffix="%">{{ avg_ret }}%</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <div class="col-md-3 fade-in d1">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-icon" style="background:var(--blue-bg);color:var(--blue);"><i class="fas fa-percentage"></i></div>
+          <div>
+            <div class="stat-label">Avg Return</div>
+            <div class="stat-value {% if avg_ret > 0 %}up{% else %}down{% endif %}">{{ avg_ret }}%</div>
+          </div>
         </div>
+      </div>
     </div>
-    <div class="col-md-3 animate-in d2">
-        <div class="card stat-card">
-            <div class="glow" style="background:var(--purple);"></div>
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="stat-icon" style="background:rgba(161,140,209,0.12);color:var(--purple);"><i class="fas fa-wave-square"></i></div>
-                    <div>
-                        <div class="stat-label">Avg Volatility</div>
-                        <div class="stat-value">{{ avg_vol }}%</div>
-                    </div>
-                </div>
-            </div>
+  </div>
+  <div class="col-md-3 fade-in d2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-icon" style="background:var(--purple-bg);color:var(--purple);"><i class="fas fa-wave-square"></i></div>
+          <div>
+            <div class="stat-label">Avg Volatility</div>
+            <div class="stat-value">{{ avg_vol }}%</div>
+          </div>
         </div>
+      </div>
     </div>
-    <div class="col-md-3 animate-in d3">
-        <div class="card stat-card">
-            <div class="glow" style="background:var(--green);"></div>
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="stat-icon" style="background:rgba(0,184,148,0.12);color:var(--green);"><i class="fas fa-arrow-up"></i></div>
-                    <div>
-                        <div class="stat-label">Stocks Up</div>
-                        <div class="stat-value up">{{ n_up }}</div>
-                    </div>
-                </div>
-            </div>
+  </div>
+  <div class="col-md-3 fade-in d3">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-icon" style="background:var(--green-bg);color:var(--green);"><i class="fas fa-arrow-trend-up"></i></div>
+          <div>
+            <div class="stat-label">Stocks Up</div>
+            <div class="stat-value up">{{ n_up }}</div>
+          </div>
         </div>
+      </div>
     </div>
-    <div class="col-md-3 animate-in d4">
-        <div class="card stat-card">
-            <div class="glow" style="background:var(--red);"></div>
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="stat-icon" style="background:rgba(225,112,85,0.12);color:var(--red);"><i class="fas fa-arrow-down"></i></div>
-                    <div>
-                        <div class="stat-label">Stocks Down</div>
-                        <div class="stat-value down">{{ n_down }}</div>
-                    </div>
-                </div>
-            </div>
+  </div>
+  <div class="col-md-3 fade-in d4">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-icon" style="background:var(--red-bg);color:var(--red);"><i class="fas fa-arrow-trend-down"></i></div>
+          <div>
+            <div class="stat-label">Stocks Down</div>
+            <div class="stat-value down">{{ n_down }}</div>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <div class="row g-4 mb-4">
-    <div class="col-lg-8 animate-in d1">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-building-columns me-2"></i>Sector Performance</div>
-            <div class="card-body">
-                <div class="chart-container tall"><canvas id="sectorChart"></canvas></div>
-            </div>
-        </div>
+  <div class="col-lg-8 fade-in d1">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-building-columns"></i>Sector Performance</div>
+      <div class="card-body">
+        <div class="chart-container md"><canvas id="sectorChart"></canvas></div>
+      </div>
     </div>
-    <div class="col-lg-4 animate-in d2">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-chart-pie me-2"></i>Market Breadth</div>
-            <div class="card-body">
-                <div class="chart-container"><canvas id="breadthChart"></canvas></div>
-                <div class="d-flex justify-content-center gap-4 mt-2">
-                    <div><span class="badge-symbol up">{{ n_up }}</span> <span class="text-muted small">Up</span></div>
-                    <div><span class="badge-symbol down">{{ n_down }}</span> <span class="text-muted small">Down</span></div>
-                </div>
-            </div>
+  </div>
+  <div class="col-lg-4 fade-in d2">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-chart-pie"></i>Market Breadth</div>
+      <div class="card-body">
+        <div class="chart-container"><canvas id="breadthChart"></canvas></div>
+        <div class="d-flex justify-content-center gap-4 mt-3">
+          <div class="text-center">
+            <div style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px;"></div>
+            <span class="fw-semibold">{{ n_up }} Up</span>
+          </div>
+          <div class="text-center">
+            <div style="width:10px;height:10px;border-radius:50%;background:var(--red);display:inline-block;margin-right:6px;"></div>
+            <span class="fw-semibold">{{ n_down }} Down</span>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <div class="row g-4 mb-4">
-    <div class="col-lg-6 animate-in d1">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-trophy me-2 text-warning"></i>Top Performers</div>
-            <div class="card-body">
-                <div class="chart-container tall"><canvas id="topPerfChart"></canvas></div>
-            </div>
-        </div>
+  <div class="col-lg-6 fade-in d1">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-trophy" style="color:var(--amber);"></i>Top Performers</div>
+      <div class="card-body">
+        <div class="chart-container md"><canvas id="topPerfChart"></canvas></div>
+      </div>
     </div>
-    <div class="col-lg-6 animate-in d2">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-bolt me-2 text-danger"></i>Bottom Performers</div>
-            <div class="card-body">
-                <div class="chart-container tall"><canvas id="botPerfChart"></canvas></div>
-            </div>
-        </div>
+  </div>
+  <div class="col-lg-6 fade-in d2">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-arrow-trend-down" style="color:var(--red);"></i>Bottom Performers</div>
+      <div class="card-body">
+        <div class="chart-container md"><canvas id="botPerfChart"></canvas></div>
+      </div>
     </div>
+  </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-lg-6 animate-in d1">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-table-cells-large me-2"></i>Sector Details</div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead><tr><th>Sector</th><th class="text-end">Return</th><th class="text-end">Volatility</th><th class="text-end">Signal</th></tr></thead>
-                        <tbody>
-                        {% for s in sectors %}
-                        <tr>
-                            <td><strong>{{ s.name }}</strong></td>
-                            <td class="text-end {% if s.return > 0 %}up{% else %}down{% endif %}">{{ s.return }}%</td>
-                            <td class="text-end">{{ s.volatility }}%</td>
-                            <td class="text-end">
-                                {% if s.return > 10 %}
-                                <span class="badge bg-success-subtle text-success px-3 py-2">Strong</span>
-                                {% elif s.return > 0 %}
-                                <span class="badge bg-warning-subtle text-warning px-3 py-2">Moderate</span>
-                                {% else %}
-                                <span class="badge bg-danger-subtle text-danger px-3 py-2">Weak</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+<div class="row g-4 mb-4">
+  <div class="col-lg-6 fade-in d1">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-gauge-high" style="color:var(--purple);"></i>Most Volatile Stocks</div>
+      <div class="card-body">
+        <div class="chart-container md"><canvas id="volChart"></canvas></div>
+      </div>
     </div>
-    <div class="col-lg-6 animate-in d2">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-gauge-high me-2 text-danger"></i>Most Volatile Stocks</div>
-            <div class="card-body">
-                <div class="chart-container tall"><canvas id="volChart"></canvas></div>
-            </div>
+  </div>
+  <div class="col-lg-6 fade-in d2">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-table-cells-large"></i>Sector Details</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Sector</th><th class="text-end">Return</th><th class="text-end">Volatility</th><th class="text-end">Signal</th></tr></thead>
+            <tbody>
+            {% for s in sectors %}
+            <tr>
+              <td><strong>{{ s.name }}</strong></td>
+              <td class="text-end {% if s.return > 0 %}up{% else %}down{% endif %}">{{ s.return }}%</td>
+              <td class="text-end">{{ s.volatility }}%</td>
+              <td class="text-end">
+                {% if s.return > 10 %}
+                <span class="badge-signal signal-strong">Strong</span>
+                {% elif s.return > 0 %}
+                <span class="badge-signal signal-moderate">Moderate</span>
+                {% else %}
+                <span class="badge-signal signal-weak">Weak</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <script>
-const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
-const ch = (dark, light) => isDark() ? dark : light;
+var sectorLabels = {{ sector_labels | safe }};
+var sectorReturns = {{ sector_returns | safe }};
+var perfLabels = {{ perf_labels | safe }};
+var perfValues = {{ perf_values | safe }};
+var perfBotLabels = {{ perf_bot_labels | safe }};
+var perfBotValues = {{ perf_bot_values | safe }};
+var volLabels = {{ vol_labels | safe }};
+var volValues = {{ vol_values | safe }};
+var nUp = {{ n_up }};
+var nDown = {{ n_down }};
 
-document.addEventListener('DOMContentLoaded', function() {
-    registerChart('sectorChart', {
-        type: 'bar',
-        data: {
-            labels: {{ sector_labels | safe }},
-            datasets: [{
-                label: 'Return %',
-                data: {{ sector_returns | safe }},
-                backgroundColor: ({{ sector_returns | safe }}).map(v => v >= 0 ?
-                    'rgba(0,184,148,0.7)' : 'rgba(225,112,85,0.7)'),
-                borderColor: ({{ sector_returns | safe }}).map(v => v >= 0 ?
-                    'rgba(0,184,148,1)' : 'rgba(225,112,85,1)'),
-                borderWidth: 2,
-                borderRadius: 6,
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { grid: { color: ch('rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)') } },
-                y: { grid: { display: false } }
-            }
-        }
-    });
+function buildCharts() {
+  registerChart('sectorChart', {
+    type: 'bar',
+    data: {
+      labels: sectorLabels,
+      datasets: [{
+        label: 'Return %',
+        data: sectorReturns,
+        backgroundColor: sectorReturns.map(function(v) { return v >= 0 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)'; }),
+        borderColor: sectorReturns.map(function(v) { return v >= 0 ? 'rgba(16,185,129,1)' : 'rgba(239,68,68,1)'; }),
+        borderWidth: 1.5,
+        borderRadius: 4,
+      }]
+    },
+    options: makeChartOptions({
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: scaleGrid(false), ticks: scaleTicks() },
+        y: { grid: scaleGrid(), ticks: scaleTicks() }
+      }
+    })
+  });
 
-    registerChart('breadthChart', {
-        type: 'doughnut',
-        data: {
-            labels: ['Up', 'Down'],
-            datasets: [{
-                data: [{{ n_up }}, {{ n_down }}],
-                backgroundColor: ['rgba(0,184,148,0.8)', 'rgba(225,112,85,0.8)'],
-                borderWidth: 0,
-            }]
-        },
-        options: {
-            cutout: '72%',
-            plugins: {
-                legend: { display: false },
-            }
-        }
-    });
+  registerChart('breadthChart', {
+    type: 'doughnut',
+    data: {
+      labels: ['Up', 'Down'],
+      datasets: [{ data: [nUp, nDown], backgroundColor: ['rgba(16,185,129,0.8)', 'rgba(239,68,68,0.8)'], borderWidth: 0 }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '72%',
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: 'CHART_TIP_BG', titleColor: 'CHART_TIP_TEXT', bodyColor: 'CHART_TIP_TEXT2', borderColor: 'CHART_TIP_BORDER', borderWidth: 1 } }
+    }
+  });
 
-    registerChart('topPerfChart', {
-        type: 'bar',
-        data: {
-            labels: {{ perf_labels | safe }},
-            datasets: [{
-                label: 'Return %',
-                data: {{ perf_values | safe }},
-                backgroundColor: 'rgba(0,184,148,0.7)',
-                borderColor: 'rgba(0,184,148,1)',
-                borderWidth: 2,
-                borderRadius: 6,
-            }]
-        },
-        options: {
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { grid: { color: ch('rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)') } },
-                x: { grid: { display: false } }
-            }
-        }
-    });
+  registerChart('topPerfChart', {
+    type: 'bar',
+    data: {
+      labels: perfLabels,
+      datasets: [{
+        label: 'Return %',
+        data: perfValues,
+        backgroundColor: 'rgba(16,185,129,0.7)',
+        borderColor: 'rgba(16,185,129,1)',
+        borderWidth: 1.5,
+        borderRadius: 4,
+      }]
+    },
+    options: makeChartOptions({
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: scaleGrid(false), ticks: scaleTicks() },
+        y: { grid: scaleGrid(), ticks: scaleTicks() }
+      }
+    })
+  });
 
-    registerChart('botPerfChart', {
-        type: 'bar',
-        data: {
-            labels: {{ perf_bot_labels | safe }},
-            datasets: [{
-                label: 'Return %',
-                data: {{ perf_bot_values | safe }},
-                backgroundColor: 'rgba(225,112,85,0.7)',
-                borderColor: 'rgba(225,112,85,1)',
-                borderWidth: 2,
-                borderRadius: 6,
-            }]
-        },
-        options: {
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { grid: { color: ch('rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)') } },
-                x: { grid: { display: false } }
-            }
-        }
-    });
+  registerChart('botPerfChart', {
+    type: 'bar',
+    data: {
+      labels: perfBotLabels,
+      datasets: [{
+        label: 'Return %',
+        data: perfBotValues,
+        backgroundColor: 'rgba(239,68,68,0.7)',
+        borderColor: 'rgba(239,68,68,1)',
+        borderWidth: 1.5,
+        borderRadius: 4,
+      }]
+    },
+    options: makeChartOptions({
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: scaleGrid(false), ticks: scaleTicks() },
+        y: { grid: scaleGrid(), ticks: scaleTicks() }
+      }
+    })
+  });
 
-    registerChart('volChart', {
-        type: 'bar',
-        data: {
-            labels: {{ perf_labels | safe }},
-            datasets: [{
-                label: 'Volatility %',
-                data: {{ perf_values | safe }},
-                backgroundColor: 'rgba(161,140,209,0.7)',
-                borderColor: 'rgba(161,140,209,1)',
-                borderWidth: 2,
-                borderRadius: 6,
-            }]
-        },
-        options: {
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { grid: { color: ch('rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)') } },
-                x: { grid: { display: false } }
-            }
-        }
-    });
-});
+  registerChart('volChart', {
+    type: 'bar',
+    data: {
+      labels: volLabels,
+      datasets: [{
+        label: 'Volatility %',
+        data: volValues,
+        backgroundColor: 'rgba(139,92,246,0.7)',
+        borderColor: 'rgba(139,92,246,1)',
+        borderWidth: 1.5,
+        borderRadius: 4,
+      }]
+    },
+    options: makeChartOptions({
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: scaleGrid(false), ticks: scaleTicks() },
+        y: { grid: scaleGrid(), ticks: scaleTicks() }
+      }
+    })
+  });
+}
+
+function rebuildCharts() { buildCharts(); }
+document.addEventListener('DOMContentLoaded', buildCharts);
 </script>
 {% endblock %}

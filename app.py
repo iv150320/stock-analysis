@@ -64,23 +64,29 @@ def index():
         sectors_list.append({"name": s, "return": r, "volatility": v})
 
     return render_template("index.html",
-                           n_up=n_up, n_down=n_down,
-                           avg_ret=avg_ret, avg_vol=avg_vol,
-                           top5=top5, bot5=bot5, top_vol5=top_vol5,
-                           sectors=sectors_list,
-                           sector_labels=to_json([s["name"] for s in sectors_list]),
-                           sector_returns=to_json([s["return"] for s in sectors_list]),
-                           sector_vols=to_json([s["volatility"] for s in sectors_list]),
-                           perf_labels=to_json([t for t, _ in top5]),
-                           perf_values=to_json([v for _, v in top5]),
-                           perf_bot_labels=to_json([t for t, _ in bot5]),
-                           perf_bot_values=to_json([v for _, v in bot5]))
+        n_up=n_up, n_down=n_down,
+        avg_ret=avg_ret, avg_vol=avg_vol,
+        top5=top5, bot5=bot5, top_vol5=top_vol5,
+        sectors=sectors_list,
+        sector_labels=to_json([s["name"] for s in sectors_list]),
+        sector_returns=to_json([s["return"] for s in sectors_list]),
+        sector_vols=to_json([s["volatility"] for s in sectors_list]),
+        perf_labels=to_json([t for t, _ in top5]),
+        perf_values=to_json([v for _, v in top5]),
+        perf_bot_labels=to_json([t for t, _ in bot5]),
+        perf_bot_values=to_json([v for _, v in bot5]),
+        vol_labels=to_json([t for t, _ in top_vol5]),
+        vol_values=to_json([v for _, v in top_vol5]))
 
 
 @app.route("/sector", methods=["GET", "POST"])
 def sector():
-    sector_name = request.form.get("sector") if request.method == "POST" else request.args.get("name")
-    period = request.form.get("period", "1y") if request.method == "POST" else "1y"
+    if request.method == "POST":
+        sector_name = request.form.get("sector")
+        period = request.form.get("period", "1y")
+    else:
+        sector_name = request.args.get("name")
+        period = request.args.get("period", "1y")
 
     if not sector_name or sector_name not in SECTORS:
         return render_template("sector.html", sectors=list(SECTORS.keys()),
@@ -125,7 +131,7 @@ def stock():
     period = request.form.get("period", "1y") if request.method == "POST" else "1y"
 
     if not symbol:
-        return render_template("stock.html", symbol=None)
+        return render_template("stock.html", symbol=None, period="1y")
 
     result, error = cached_analysis(tickers=[symbol], period=period)
     if error or result is None:
