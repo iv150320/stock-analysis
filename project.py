@@ -19,7 +19,7 @@ SECTORS = {
     "Finance": ["JPM", "BAC", "WFC", "GS", "MS", "C", "AXP", "BLK", "SCHW", "USB",
         "PNC", "TFC", "BK", "COF", "SPGI", "MCO", "MET", "AIG", "PRU", "AFL"],
     "Healthcare": ["UNH", "PFE", "ABBV", "MRK", "ABT", "LLY", "TMO", "JNJ", "BMY", "AMGN",
-                   "CVS", "MDT", "ISRG", "SYK", "GILD", "BSX", "REGN", "VRTX", "DHR", "BDX"],
+                   "CVS", "MDT", "ISRG", "SYK", "GILD", "BSX", "REGN", "VRTX", "CI", "BDX"],
     "Consumer Cyclical": ["AMZN", "TSLA", "HD", "MCD", "NKE", "SBUX", "LOW", "BKNG", "TGT", "TJX",
                           "ROST", "GM", "F", "EBAY", "MAR", "HLT", "DRI", "YUM", "CMG", "AZO"],
     "Energy": ["XOM", "CVX", "COP", "SLB", "EOG", "OXY", "MPC", "PSX", "VLO", "KMI",

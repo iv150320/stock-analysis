@@ -2,140 +2,195 @@
 {% block title %}StockScope &mdash; Stock Lookup{% endblock %}
 {% block content %}
 
-<div class="page-head anim">
-  <h1><i class="fas fa-magnifying-glass-chart" style="color:var(--c-teal);margin-right:10px"></i>Stock Lookup</h1>
-  <p>Interactive price charts and performance metrics for any stock</p>
+<!-- Header -->
+<div class="page-head mb-8 anim flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+        <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center text-lg flex-shrink-0">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
+            Stock Lookup
+        </h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Analyze pricing performance, historic charts, and moving averages on any S&amp;P 500 stock.
+        </p>
+    </div>
 </div>
 
-<div class="search-box anim d1">
-  <form method="post" class="form-row">
-    <div class="form-group">
-      <label>Ticker Symbol</label>
-      <input type="text" name="symbol" placeholder="e.g. AAPL, MSFT, NVDA" value="{{ symbol or '' }}" style="text-transform:uppercase;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:1px">
-    </div>
-    <div class="form-group">
-      <label>Period</label>
-      <select name="period">
-        <option value="1mo" {% if period == '1mo' %}selected{% endif %}>1 Month</option>
-        <option value="3mo" {% if period == '3mo' %}selected{% endif %}>3 Months</option>
-        <option value="6mo" {% if period == '6mo' %}selected{% endif %}>6 Months</option>
-        <option value="1y" {% if period == '1y' or not period %}selected{% endif %}>1 Year</option>
-        <option value="2y" {% if period == '2y' %}selected{% endif %}>2 Years</option>
-        <option value="5y" {% if period == '5y' %}selected{% endif %}>5 Years</option>
-      </select>
-    </div>
-    <div class="form-group" style="flex:0;min-width:auto">
-      <label>&nbsp;</label>
-      <button class="btn" type="submit"><i class="fas fa-bolt"></i> Look Up</button>
-    </div>
-  </form>
+<!-- Search Panel -->
+<div class="search-box p-6 md:p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl mb-8 shadow-sm anim d1">
+    <form method="post" class="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+        <div class="col-span-1 md:col-span-5 flex flex-col gap-2">
+            <label class="form-label text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Stock Ticker</label>
+            <input type="text" name="symbol" placeholder="e.g. AAPL, MSFT, NVDA" value="{{ symbol or '' }}" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm font-mono font-bold uppercase tracking-widest focus:ring-2 focus:ring-blue-500 transition-all">
+        </div>
+        <div class="col-span-1 md:col-span-4 flex flex-col gap-2">
+            <label class="form-label text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Analysis Time Horizon</label>
+            <select name="period" class="form-select w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 transition-all">
+                <option value="1mo" {% if period == '1mo' %}selected{% endif %}>1 Month</option>
+                <option value="3mo" {% if period == '3mo' %}selected{% endif %}>3 Months</option>
+                <option value="6mo" {% if period == '6mo' %}selected{% endif %}>6 Months</option>
+                <option value="1y" {% if period == '1y' or not period %}selected{% endif %}>1 Year</option>
+                <option value="2y" {% if period == '2y' %}selected{% endif %}>2 Years</option>
+                <option value="5y" {% if period == '5y' %}selected{% endif %}>5 Years</option>
+            </select>
+        </div>
+        <div class="col-span-1 md:col-span-3">
+            <button class="btn w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2" type="submit">
+                <i class="fa-solid fa-magnifying-glass"></i> Analyze Stock
+            </button>
+        </div>
+    </form>
 </div>
 
 {% if error %}
-<div class="alert"><i class="fas fa-circle-exclamation"></i> {{ error }}</div>
+<div class="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl text-sm font-semibold flex items-center gap-3 anim">
+    <i class="fa-solid fa-circle-exclamation text-lg"></i> {{ error }}
+</div>
 {% endif %}
 
 {% if ret is not none and symbol %}
-<div class="row gap24">
-  <div class="col-4 anim d1">
-    <div class="card"><div class="stat">
-      <div class="stat-ico" style="background:var(--c-blue-bg);color:var(--c-blue)"><i class="fas fa-coins"></i></div>
-      <div><div class="stat-lbl">Symbol</div><div class="stat-val" style="font-family:'JetBrains Mono',monospace">{{ symbol }}</div></div>
-    </div></div>
-  </div>
-  <div class="col-4 anim d2">
-    <div class="card"><div class="stat">
-      <div class="stat-ico" style="background:{% if ret > 0 %}var(--c-green-bg){% else %}var(--c-red-bg){% endif %};color:{% if ret > 0 %}var(--c-green){% else %}var(--c-red){% endif %}"><i class="fas fa-percentage"></i></div>
-      <div><div class="stat-lbl">Total Return</div><div class="stat-val {% if ret > 0 %}up{% else %}down{% endif %}">{{ ret }}%</div></div>
-    </div></div>
-  </div>
-  <div class="col-4 anim d3">
-    <div class="card"><div class="stat">
-      <div class="stat-ico" style="background:var(--c-purple-bg);color:var(--c-purple)"><i class="fas fa-wave-square"></i></div>
-      <div><div class="stat-lbl">Volatility</div><div class="stat-val">{{ vol }}%</div></div>
-    </div></div>
-  </div>
+<!-- Key Ticker Metrics -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="premium-card glow-blue anim d1">
+        <div class="p-6 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center text-lg flex-shrink-0">
+                <i class="fa-solid fa-wallet"></i>
+            </div>
+            <div>
+                <span class="stat-label">Ticker Asset</span>
+                <div class="stat-value text-slate-800 dark:text-slate-100 font-mono tracking-widest uppercase">
+                    {{ symbol }}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="premium-card {% if ret > 0 %}glow-green{% else %}glow-red{% endif %} anim d2">
+        <div class="p-6 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl {% if ret > 0 %}bg-emerald-500/10 text-emerald-500{% else %}bg-red-500/10 text-red-500{% endif %} flex items-center justify-center text-lg flex-shrink-0">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <div>
+                <span class="stat-label">Total Return ({{ period }})</span>
+                <div class="stat-value {% if ret > 0 %}up{% else %}down{% endif %}">
+                    {% if ret > 0 %}+{% endif %}{{ ret }}%
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="premium-card glow-purple anim d3">
+        <div class="p-6 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center text-lg flex-shrink-0">
+                <i class="fa-solid fa-wave-square"></i>
+            </div>
+            <div>
+                <span class="stat-label">Asset Volatility</span>
+                <div class="stat-value text-accent-purple font-mono">{{ vol }}%</div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="row gap24">
-  <div class="col-12 anim d1">
-    <div class="card">
-      <div class="card-head">
-        <div class="ico" style="background:var(--c-blue-bg);color:var(--c-blue)"><i class="fas fa-chart-line"></i></div>
-        {{ symbol }} Price History
-        <span class="tag" style="margin-left:8px">{{ period }}</span>
-      </div>
-      <div class="card-body">
-        <div class="chart-box h480"><canvas id="priceChart"></canvas></div>
-      </div>
+<!-- Price history chart with MAs -->
+<div class="premium-card anim d1 mb-8">
+    <div class="card-header border-b border-slate-200 dark:border-slate-800 p-5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center"><i class="fa-solid fa-chart-area"></i></div>
+            <h3 class="font-bold text-sm tracking-wide text-slate-800 dark:text-slate-200 uppercase">{{ symbol }} Close History &amp; Overlays</h3>
+        </div>
+        <span class="badge-symbol">{{ period }}</span>
     </div>
-  </div>
+    <div class="p-6">
+        <div class="chart-box h480"><canvas id="priceChart"></canvas></div>
+    </div>
 </div>
 
 <script>
-var D={
-  dates:{{ dates | safe }},
-  prices:{{ prices | safe }},
-  ma50:{{ ma50 | safe }},
-  ma200:{{ ma200 | safe }},
-  sym:'{{ symbol }}'
+var _d = {
+  dates: {{ dates | safe }},
+  prices: {{ prices | safe }},
+  ma50: {{ ma50 | safe }},
+  ma200: {{ ma200 | safe }},
+  sym: '{{ symbol }}'
 };
 
-function buildCharts(){
-  mk('priceChart',{
-    type:'line',
-    data:{
-      labels:D.dates,
-      datasets:[
+function buildCharts() {
+  mk('priceChart', {
+    type: 'line',
+    data: {
+      labels: _d.dates,
+      datasets: [
         {
-          label:D.sym+' Close',
-          data:D.prices,
-          borderColor:'#448aff',
-          backgroundColor:function(ctx){
-            var ch=ctx.chart,area=ch.chartArea;
-            if(!area)return'rgba(68,138,255,.08)';
-            var g=ch.ctx.createLinearGradient(0,area.top,0,area.bottom);
-            g.addColorStop(0,'rgba(68,138,255,.2)');
-            g.addColorStop(.6,'rgba(68,138,255,.03)');
-            g.addColorStop(1,'rgba(68,138,255,0)');
+          label: _d.sym + ' Close Price',
+          data: _d.prices,
+          borderColor: '#3b82f6',
+          backgroundColor: function(ctx) {
+            var ch = ctx.chart, area = ch.chartArea;
+            if (!area) return 'rgba(59, 130, 246, 0.08)';
+            var g = ch.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+            g.addColorStop(0, 'rgba(59, 130, 246, 0.25)');
+            g.addColorStop(0.5, 'rgba(59, 130, 246, 0.06)');
+            g.addColorStop(1, 'rgba(59, 130, 246, 0)');
             return g;
           },
-          fill:true,borderWidth:3,
-          pointRadius:0,pointHoverRadius:5,
-          pointHoverBackgroundColor:'#448aff',
-          pointHoverBorderColor:'#fff',pointHoverBorderWidth:2,
-          tension:.35
+          fill: true,
+          borderWidth: 3,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: '#3b82f6',
+          pointHoverBorderColor: '#fff',
+          pointHoverBorderWidth: 2,
+          tension: 0.3
         },
         {
-          label:'50-day MA',data:D.ma50,
-          borderColor:'#ffc107',borderWidth:1.5,borderDash:[8,4],
-          pointRadius:0,pointHoverRadius:3,tension:.35,fill:false
+          label: '50-day Simple MA',
+          data: _d.ma50,
+          borderColor: '#f59e0b',
+          borderWidth: 1.8,
+          borderDash: [8, 4],
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          tension: 0.3,
+          fill: false
         },
         {
-          label:'200-day MA',data:D.ma200,
-          borderColor:'#ff1744',borderWidth:1.5,borderDash:[8,4],
-          pointRadius:0,pointHoverRadius:3,tension:.35,fill:false
+          label: '200-day Simple MA',
+          data: _d.ma200,
+          borderColor: '#ef4444',
+          borderWidth: 1.8,
+          borderDash: [8, 4],
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          tension: 0.3,
+          fill: false
         }
       ]
     },
-    options:{
-      interaction:{intersect:false,mode:'index'},
-      plugins:{
-        legend:LL(),
-        tooltip:Object.assign(TT(),{callbacks:{label:function(c){
-          if(c.parsed.y!=null)return c.dataset.label+': $'+c.parsed.y.toFixed(2);
-          return''
-        }}})
+    options: {
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: autoLegend(),
+        tooltip: Object.assign(autoTip(), {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.parsed.y != null) {
+                return ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(2);
+              }
+              return '';
+            }
+          }
+        })
       },
-      scales:{
-        x:{grid:{display:false},ticks:Object.assign(T(),{maxTicksLimit:10})},
-        y:{grid:G(),ticks:Object.assign(T(),{callback:function(v){return'$'+v.toFixed(0)}})}
+      scales: {
+        x: { grid: { display: false }, ticks: Object.assign(autoTicks(), { maxTicksLimit: 12 }) },
+        y: { grid: autoGrid(), ticks: Object.assign(autoTicks(), { callback: function(v) { return '$' + v.toFixed(0); } }) }
       }
     }
   });
 }
 
-document.addEventListener('DOMContentLoaded',buildCharts);
+document.addEventListener('DOMContentLoaded', buildCharts);
+function rebuildCharts() { buildCharts(); }
 </script>
 {% endif %}
 {% endblock %}

@@ -1,382 +1,369 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}StockScope{% endblock %}</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}StockScope &mdash; S&amp;P 500 Analytics{% endblock %}</title>
+    
+    <!-- CDNs: Tailwind, FontAwesome, Chart.js, Inter Font -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    <script>
+        // Configure Tailwind with custom colors and dark mode strategy
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            200: '#b9defe',
+                            300: '#7cc2fd',
+                            400: '#36a2fc',
+                            500: '#0c86eb',
+                            600: '#0267c7',
+                            700: '#0352a1',
+                            800: '#074685',
+                            900: '#0c3b6f',
+                            950: '#08254b',
+                        },
+                        accent: {
+                            green: '#10b981',
+                            red: '#ef4444',
+                            purple: '#8b5cf6',
+                            yellow: '#f59e0b',
+                            cyan: '#06b6d4',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
-:root{
-  --c-bg:#080a0f;
-  --c-surface:#0f1219;
-  --c-surface2:#161b27;
-  --c-border:#1e2536;
-  --c-border2:#2a3148;
-  --c-text:#e4e8f1;
-  --c-text2:#8892aa;
-  --c-text3:#4e566d;
-  --c-green:#00e676;
-  --c-red:#ff1744;
-  --c-blue:#448aff;
-  --c-yellow:#ffc107;
-  --c-purple:#7c4dff;
-  --c-teal:#18ffff;
-  --c-green-bg:rgba(0,230,118,.08);
-  --c-red-bg:rgba(255,23,68,.08);
-  --c-blue-bg:rgba(68,138,255,.08);
-  --c-yellow-bg:rgba(255,193,7,.08);
-  --c-purple-bg:rgba(124,77,255,.08);
-  --chart-grid:rgba(255,255,255,.04);
-  --chart-tick:#4e566d;
-}
+    <style type="text/tailwindcss">
+        @layer base {
+            :root {
+                --bg-app: #f8fafc;
+                --bg-card: #ffffff;
+                --border-color: #e2e8f0;
+                --text-primary: #0f172a;
+                --text-secondary: #475569;
+                --text-muted: #94a3b8;
+                --glow-color: rgba(12, 134, 235, 0.05);
+            }
+            .dark {
+                --bg-app: #090d16;
+                --bg-card: #0f172a;
+                --border-color: #1e293b;
+                --text-primary: #f8fafc;
+                --text-secondary: #94a3b8;
+                --text-muted: #475569;
+                --glow-color: rgba(12, 134, 235, 0.15);
+            }
+            body {
+                @apply transition-colors duration-300;
+                background-color: var(--bg-app);
+                color: var(--text-primary);
+            }
+        }
 
-html{scroll-behavior:smooth}
+        /* Glassmorphic Navigation with subtle animated grid background */
+        .glass-nav {
+            @apply backdrop-blur-md bg-opacity-80 transition-all duration-300;
+            background-color: rgba(15, 23, 42, 0.1);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .dark .glass-nav {
+            background-color: rgba(15, 23, 42, 0.6);
+        }
 
-body{
-  font-family:'Inter',system-ui,-apple-system,sans-serif;
-  background:var(--c-bg);
-  color:var(--c-text);
-  line-height:1.5;
-  min-height:100vh;
-}
+        /* Premium card styles with glow effects and custom borders */
+        .premium-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            @apply rounded-2xl shadow-sm transition-all duration-300 relative overflow-hidden;
+        }
+        .premium-card::before {
+            content: '';
+            @apply absolute top-0 left-0 right-0 h-[2px] opacity-0 transition-opacity duration-300;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
+        }
+        .premium-card:hover::before {
+            @apply opacity-100;
+        }
+        .premium-card:hover {
+            @apply shadow-lg -translate-y-1;
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 10px 30px -10px var(--glow-color);
+        }
 
-.mono{font-family:'JetBrains Mono',monospace}
+        /* Hero banner custom radial gradient */
+        .premium-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            @apply relative overflow-hidden rounded-3xl border border-blue-900/30;
+        }
+        .premium-hero::after {
+            content: '';
+            @apply absolute inset-0 pointer-events-none;
+            background: radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.15), transparent 50%),
+                        radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.12), transparent 50%);
+        }
 
-a{color:var(--c-blue);text-decoration:none}
-a:hover{color:#82b1ff}
+        /* Animated indicator dots */
+        .pulse-indicator {
+            @apply relative flex h-2 w-2;
+        }
+        .pulse-indicator .ping {
+            @apply animate-ping absolute inline-flex h-full w-full rounded-full opacity-75;
+        }
+        .pulse-indicator .dot {
+            @apply relative inline-flex rounded-full h-2 w-2;
+        }
 
-header{
-  background:var(--c-surface);
-  border-bottom:1px solid var(--c-border);
-  position:sticky;top:0;z-index:100;
-}
-
-.header-inner{
-  max-width:1400px;margin:0 auto;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 24px;height:56px;
-}
-
-.logo{
-  font-weight:900;font-size:1.15rem;letter-spacing:-.5px;
-  color:#fff;display:flex;align-items:center;gap:10px;
-}
-
-.logo-mark{
-  width:30px;height:30px;border-radius:8px;
-  background:linear-gradient(135deg,var(--c-blue),var(--c-purple));
-  display:flex;align-items:center;justify-content:center;
-  font-size:.8rem;color:#fff;
-}
-
-nav{display:flex;gap:4px}
-
-nav a{
-  color:var(--c-text3);font-weight:600;font-size:.82rem;
-  padding:7px 14px;border-radius:8px;transition:all .2s;
-  display:flex;align-items:center;gap:7px;
-}
-
-nav a:hover{color:var(--c-text);background:rgba(255,255,255,.04)}
-nav a.active{color:#fff;background:rgba(68,138,255,.12)}
-
-.main{max-width:1400px;margin:0 auto;padding:24px}
-
-.hero{
-  background:linear-gradient(135deg,#0a1628 0%,#101030 50%,#0a1628 100%);
-  border:1px solid var(--c-border);
-  border-radius:16px;padding:32px 36px;
-  margin-bottom:24px;position:relative;overflow:hidden;
-}
-
-.hero-grid{display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap}
-
-.hero-text h1{
-  font-size:1.75rem;font-weight:900;letter-spacing:-.8px;
-  color:#fff;margin-bottom:6px;
-}
-
-.hero-text p{color:rgba(255,255,255,.4);font-size:.9rem}
-
-.hero-stats{display:flex;gap:24px}
-
-.hero-stat{
-  text-align:center;padding:12px 20px;
-  background:rgba(255,255,255,.03);border-radius:12px;
-  border:1px solid rgba(255,255,255,.05);min-width:100px;
-}
-
-.hero-stat .val{
-  font-size:1.5rem;font-weight:900;letter-spacing:-.5px;
-  display:block;font-family:'JetBrains Mono',monospace;
-}
-
-.hero-stat .lbl{
-  font-size:.65rem;text-transform:uppercase;letter-spacing:1px;
-  color:rgba(255,255,255,.3);font-weight:700;margin-top:2px;display:block;
-}
-
-.row{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap}
-.row.gap24{gap:24px;margin-bottom:24px}
-
-.col{flex:1;min-width:0}
-.col-3{flex:0 0 25%;max-width:25%}
-.col-4{flex:0 0 33.333%;max-width:33.333%}
-.col-5{flex:0 0 41.666%;max-width:41.666%}
-.col-6{flex:0 0 50%;max-width:50%}
-.col-7{flex:0 0 58.333%;max-width:58.333%}
-.col-8{flex:0 0 66.666%;max-width:66.666%}
-.col-12{flex:0 0 100%;max-width:100%}
-
-@media(max-width:1024px){
-  .col-3,.col-4,.col-5,.col-6,.col-7,.col-8{flex:0 0 50%;max-width:50%}
-}
-
-@media(max-width:768px){
-  .col-3,.col-4,.col-5,.col-6,.col-7,.col-8,.col-12{flex:0 0 100%;max-width:100%}
-  .hero-grid{flex-direction:column;text-align:center}
-  .hero-stats{justify-content:center}
-  .main{padding:16px}
-  .hero{padding:20px}
-  .hero-text h1{font-size:1.3rem}
-}
-
-.card{
-  background:var(--c-surface);
-  border:1px solid var(--c-border);
-  border-radius:12px;overflow:hidden;
-}
-
-.card-head{
-  padding:14px 18px;
-  border-bottom:1px solid var(--c-border);
-  font-weight:700;font-size:.8rem;
-  letter-spacing:.4px;color:var(--c-text2);
-  display:flex;align-items:center;gap:8px;
-}
-
-.card-head .ico{
-  width:28px;height:28px;border-radius:7px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:.75rem;
-}
-
-.card-body{padding:18px}
-
-.stat{
-  padding:20px;display:flex;align-items:center;gap:14px;
-}
-
-.stat-ico{
-  width:46px;height:46px;border-radius:12px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:1.1rem;flex-shrink:0;
-}
-
-.stat-lbl{
-  font-size:.68rem;font-weight:800;text-transform:uppercase;
-  letter-spacing:1px;color:var(--c-text3);margin-bottom:4px;
-}
-
-.stat-val{
-  font-size:1.6rem;font-weight:900;letter-spacing:-.5px;
-  line-height:1;font-family:'JetBrains Mono',monospace;
-}
-
-.up{color:var(--c-green)}
-.down{color:var(--c-red)}
-
-.chart-box{position:relative;width:100%}
-.chart-box.h250{height:250px}
-.chart-box.h300{height:300px}
-.chart-box.h350{height:350px}
-.chart-box.h400{height:400px}
-.chart-box.h480{height:480px}
-
-.form-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
-
-.form-group{display:flex;flex-direction:column;flex:1;min-width:180px}
-
-.form-group label{
-  font-size:.65rem;font-weight:800;text-transform:uppercase;
-  letter-spacing:1.2px;color:var(--c-text3);margin-bottom:6px;
-}
-
-.form-group select,
-.form-group input{
-  background:var(--c-surface2);border:1.5px solid var(--c-border);
-  border-radius:8px;color:var(--c-text);padding:9px 14px;
-  font-size:.88rem;transition:border-color .2s,box-shadow .2s;
-  font-family:inherit;
-}
-
-.form-group select:focus,
-.form-group input:focus{
-  outline:none;border-color:var(--c-blue);
-  box-shadow:0 0 0 3px rgba(68,138,255,.15);
-}
-
-.form-group input::placeholder{color:var(--c-text3)}
-
-.btn{
-  background:var(--c-blue);color:#fff;border:none;
-  border-radius:8px;padding:9px 22px;
-  font-weight:700;font-size:.88rem;cursor:pointer;
-  transition:all .2s;display:inline-flex;align-items:center;gap:7px;
-  white-space:nowrap;
-}
-
-.btn:hover{background:#2979ff;box-shadow:0 4px 16px rgba(68,138,255,.3)}
-
-.search-box{
-  background:var(--c-surface);border:1px solid var(--c-border);
-  border-radius:12px;padding:20px 24px;margin-bottom:24px;
-  position:relative;
-}
-
-.search-box::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,var(--c-blue),var(--c-purple),var(--c-teal));
-  border-radius:12px 12px 0 0;
-}
-
-.tag{
-  display:inline-block;padding:3px 10px;border-radius:5px;
-  font-size:.78rem;font-weight:700;font-family:'JetBrains Mono',monospace;
-  background:var(--c-surface2);border:1px solid var(--c-border);color:var(--c-text);
-}
-
-.badge{
-  display:inline-block;padding:4px 12px;border-radius:20px;
-  font-size:.7rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
-}
-
-.badge-green{background:var(--c-green-bg);color:var(--c-green)}
-.badge-yellow{background:var(--c-yellow-bg);color:var(--c-yellow)}
-.badge-red{background:var(--c-red-bg);color:var(--c-red)}
-
-table{width:100%;border-collapse:collapse}
-
-th{
-  font-size:.65rem;font-weight:800;text-transform:uppercase;
-  letter-spacing:1px;color:var(--c-text3);
-  padding:10px 14px;text-align:left;
-  border-bottom:1px solid var(--c-border);background:var(--c-surface2);
-}
-
-td{
-  padding:10px 14px;border-bottom:1px solid var(--c-border);
-  font-size:.85rem;
-}
-
-tbody tr{transition:background .15s}
-tbody tr:hover{background:rgba(68,138,255,.03)}
-
-.alert{
-  padding:14px 18px;border-radius:10px;font-size:.88rem;font-weight:600;
-  background:var(--c-red-bg);color:var(--c-red);
-  border:1px solid rgba(255,23,68,.15);margin-bottom:16px;
-}
-
-.page-head{margin-bottom:20px}
-
-.page-head h1{
-  font-size:1.6rem;font-weight:900;letter-spacing:-.5px;margin-bottom:2px;
-}
-
-.page-head p{color:var(--c-text3);font-size:.88rem}
-
-footer{
-  text-align:center;padding:24px 0;
-  color:var(--c-text3);font-size:.75rem;
-  border-top:1px solid var(--c-border);margin-top:32px;
-}
-
-.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
-.dot-g{background:var(--c-green);box-shadow:0 0 6px var(--c-green)}
-.dot-r{background:var(--c-red);box-shadow:0 0 6px var(--c-red)}
-
-.scroll-y{overflow-y:auto}
-
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.anim{animation:fadeUp .4s ease both}
-.anim.d1{animation-delay:.05s}
-.anim.d2{animation-delay:.1s}
-.anim.d3{animation-delay:.15s}
-.anim.d4{animation-delay:.2s}
-.anim.d5{animation-delay:.25s}
-
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--c-border2);border-radius:3px}
-</style>
+        /* Custom scrollbar matching premium theme */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            @apply rounded-full bg-slate-300 dark:bg-slate-800;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            @apply bg-slate-400 dark:bg-slate-700;
+        }
+    </style>
 </head>
-<body>
-<header>
-  <div class="header-inner">
-    <a href="/" class="logo">
-      <div class="logo-mark"><i class="fas fa-bolt"></i></div>
-      StockScope
-    </a>
-    <nav>
-      <a href="/"><i class="fas fa-chart-line"></i> Dashboard</a>
-      <a href="/sector"><i class="fas fa-layer-group"></i> Sectors</a>
-      <a href="/stock"><i class="fas fa-magnifying-glass-chart"></i> Lookup</a>
-    </nav>
-  </div>
-</header>
+<body class="min-h-screen flex flex-col font-sans">
 
-<div class="main">
-  {% block content %}{% endblock %}
-</div>
+    <!-- Premium Navigation -->
+    <header class="glass-nav sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <a href="/" class="flex items-center gap-3 group">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform duration-300">
+                        <i class="fa-solid fa-chart-line text-lg"></i>
+                    </div>
+                    <span class="text-xl font-black tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent group-hover:opacity-90 transition-opacity">
+                        StockScope
+                    </span>
+                </a>
 
-<footer>StockScope &bull; S&amp;P 500 Analysis &bull; Data via Yahoo Finance</footer>
+                <!-- Navigation Links -->
+                <nav class="hidden md:flex items-center gap-1">
+                    <a href="/" class="nav-btn px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-250">
+                        <i class="fa-solid fa-shapes"></i> Dashboard
+                    </a>
+                    <a href="/sector" class="nav-btn px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-250">
+                        <i class="fa-solid fa-chart-pie"></i> Sectors
+                    </a>
+                    <a href="/stock" class="nav-btn px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-250">
+                        <i class="fa-solid fa-magnifying-glass"></i> Stock Lookup
+                    </a>
+                </nav>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></script>
-<script>
-var charts={};
+                <!-- Action Group -->
+                <div class="flex items-center gap-3">
+                    <!-- Light/Dark Toggle -->
+                    <button id="themeBtn" onclick="toggleTheme()" class="theme-toggle w-10 h-10 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm border border-slate-200 dark:border-slate-700" title="Toggle Theme">
+                        <i id="themeIcon" class="fa-solid fa-sun text-md"></i>
+                    </button>
+                    <!-- Mobile Nav Trigger -->
+                    <button onclick="toggleMobileNav()" class="md:hidden w-10 h-10 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Dropdown Navigation -->
+        <div id="mobileNav" class="hidden md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 flex flex-col gap-2">
+            <a href="/" class="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <i class="fa-solid fa-shapes text-blue-500"></i> Dashboard
+            </a>
+            <a href="/sector" class="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <i class="fa-solid fa-chart-pie text-purple-500"></i> Sectors
+            </a>
+            <a href="/stock" class="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <i class="fa-solid fa-magnifying-glass text-cyan-500"></i> Stock Lookup
+            </a>
+        </div>
+    </header>
 
-function mk(id,opts){
-  var el=document.getElementById(id);
-  if(!el)return null;
-  if(charts[id]){charts[id].destroy();delete charts[id]}
-  opts.options=opts.options||{};
-  opts.options.responsive=true;
-  opts.options.maintainAspectRatio=false;
-  paint(opts.options);
-  charts[id]=new Chart(el,opts);
-  return charts[id];
-}
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
 
-function paint(o){
-  var s=o.scales;
-  if(s)Object.values(s).forEach(function(v){
-    if(v.grid&&v.grid._g){v.grid.color='rgba(255,255,255,.04)';v.grid.drawBorder=false}
-    if(v.ticks&&v.ticks._g){v.grid=v.grid||{};v.ticks.color='#4e566d';v.ticks.font={size:11,family:"'Inter',sans-serif"}}
-  });
-  var t=o.plugins&&o.plugins.tooltip;
-  if(t&&t._g){
-    t.backgroundColor='#161b27';t.titleColor='#e4e8f1';t.bodyColor='#8892aa';
-    t.borderColor='#1e2536';t.borderWidth=1;t.cornerRadius=8;t.padding=10;
-    t.titleFont={weight:'800',size:12};t.bodyFont={size:12};
-  }
-  var l=o.plugins&&o.plugins.legend;
-  if(l&&l.labels&&l.labels._g){
-    l.labels.color='#8892aa';l.labels.usePointStyle=true;l.labels.pointStyle='circle';
-    l.labels.padding=16;l.labels.font={weight:'600',size:11};
-  }
-}
+    <!-- Footer -->
+    <footer class="border-t border-slate-200 dark:border-slate-800 py-8 bg-white dark:bg-slate-950/40 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center md:flex md:items-center md:justify-between">
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+                &copy; 2026 StockScope &bull; S&amp;P 500 Market Intelligence Tool.
+            </p>
+            <p class="text-xs text-slate-400 dark:text-slate-500 mt-2 md:mt-0">
+                Designed for CS50x Final Project &bull; Live market data sourced via Yahoo Finance.
+            </p>
+        </div>
+    </footer>
 
-function G(){return{display:true,_g:true}}
-function T(){return{_g:true}}
-function TT(){return{_g:true,cornerRadius:8,padding:10,titleFont:{weight:'800',size:12},bodyFont:{size:12}}}
-function LL(){return{_g:true,usePointStyle:true,pointStyle:'circle',padding:16,font:{weight:'600',size:11}}}
+    <!-- Core Chart Theme Orchestrator -->
+    <script>
+        // Set active state for nav items
+        document.addEventListener("DOMContentLoaded", function() {
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                const path = btn.getAttribute('href');
+                if (currentPath === path) {
+                    btn.classList.add('active');
+                }
+            });
+        });
 
-function rebuild(){if(typeof buildCharts==='function')buildCharts()}
-</script>
+        // Manage global theme (dark/light)
+        let _theme = localStorage.getItem('theme') || 'dark';
+        
+        function applyTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            if (_theme === 'dark') {
+                html.classList.add('dark');
+                icon.className = 'fa-solid fa-sun text-amber-500';
+            } else {
+                html.classList.remove('dark');
+                icon.className = 'fa-solid fa-moon text-indigo-500';
+            }
+            // Repaint all active ChartJS canvases with appropriate colors
+            updateChartColors();
+        }
+
+        function toggleTheme() {
+            _theme = _theme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', _theme);
+            applyTheme();
+        }
+
+        function toggleMobileNav() {
+            const nav = document.getElementById('mobileNav');
+            nav.classList.toggle('hidden');
+        }
+
+        // Apply theme immediately to prevent layout flash
+        applyTheme();
+
+        // Standardized ChartJS configuration builder
+        var charts = {};
+
+        function mk(id, opts) {
+            var el = document.getElementById(id);
+            if (!el) return null;
+            
+            // Clean up existing instance to avoid memory leaks
+            if (charts[id]) {
+                charts[id].destroy();
+                delete charts[id];
+            }
+            
+            opts.options = opts.options || {};
+            opts.options.responsive = true;
+            opts.options.maintainAspectRatio = false;
+            
+            // Apply current theme palette to config
+            decorateConfig(opts.options);
+            
+            charts[id] = new Chart(el, opts);
+            return charts[id];
+        }
+
+        function getPalette() {
+            const isDark = document.documentElement.classList.contains('dark');
+            return {
+                grid: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(15, 23, 42, 0.05)',
+                tick: isDark ? '#94a3b8' : '#475569',
+                text: isDark ? '#f8fafc' : '#0f172a',
+                bgCard: isDark ? '#1e293b' : '#ffffff',
+                borderCard: isDark ? '#334155' : '#e2e8f0',
+            };
+        }
+
+        function decorateConfig(o) {
+            const colors = getPalette();
+            
+            // Grid and Ticks Styling
+            if (o.scales) {
+                Object.values(o.scales).forEach(s => {
+                    if (s.grid && s.grid._auto) {
+                        s.grid.color = colors.grid;
+                        s.grid.drawBorder = false;
+                    }
+                    if (s.ticks && s.ticks._auto) {
+                        s.ticks.color = colors.tick;
+                        s.ticks.font = {
+                            size: 11,
+                            family: 'Inter, sans-serif',
+                            weight: '500'
+                        };
+                    }
+                });
+            }
+
+            // Legend Styling
+            if (o.plugins && o.plugins.legend) {
+                o.plugins.legend.labels = o.plugins.legend.labels || {};
+                if (o.plugins.legend.labels._auto) {
+                    o.plugins.legend.labels.color = colors.tick;
+                    o.plugins.legend.labels.usePointStyle = true;
+                    o.plugins.legend.labels.pointStyle = 'circle';
+                    o.plugins.legend.labels.padding = 16;
+                    o.plugins.legend.labels.font = {
+                        size: 11,
+                        family: 'Inter, sans-serif',
+                        weight: '600'
+                    };
+                }
+            }
+
+            // High-End Tooltips Styling
+            if (o.plugins && o.plugins.tooltip) {
+                o.plugins.tooltip = Object.assign({
+                    backgroundColor: colors.bgCard,
+                    titleColor: colors.text,
+                    bodyColor: colors.tick,
+                    borderColor: colors.borderCard,
+                    borderWidth: 1,
+                    cornerRadius: 12,
+                    padding: 12,
+                    titleFont: { size: 12, family: 'Inter, sans-serif', weight: '700' },
+                    bodyFont: { size: 12, family: 'Inter, sans-serif' },
+                    boxPadding: 6,
+                    usePointStyle: true,
+                }, o.plugins.tooltip);
+            }
+        }
+
+        function updateChartColors() {
+            const colors = getPalette();
+            Object.values(charts).forEach(c => {
+                decorateConfig(c.options);
+                c.update();
+            });
+        }
+
+        // Helpers to mark parameters as theme-reactive
+        function autoGrid() { return { display: true, _auto: true }; }
+        function autoTicks() { return { _auto: true }; }
+        function autoLegend() { return { labels: { _auto: true } }; }
+    </script>
 </body>
 </html>
