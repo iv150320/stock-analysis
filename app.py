@@ -1,16 +1,15 @@
+import json
 import os
 import time
-from flask import Flask, render_template, request, send_from_directory
+from flask import Flask, render_template, request
 
 app = Flask(__name__)
 app.secret_key = "cs50-final-project"
-app.jinja_env.filters["basename"] = lambda p: os.path.basename(p) if p else ""
 
-CHARTS_DIR = os.path.join(os.path.dirname(__file__), "charts")
 CACHE_DURATION = 300
 _cache = {}
 
-from project import SECTORS, run_analysis, plot_price_with_ma
+from project import SECTORS, run_analysis
 
 
 def cached_analysis(**kwargs):
@@ -24,6 +23,14 @@ def cached_analysis(**kwargs):
     return result, error
 
 
+def to_json(obj):
+    return json.dumps(obj, default=str)
+
+
+def np_val(v):
+    return float(v) if hasattr(v, "item") else v
+
+
 @app.route("/health")
 def health():
     return "ok", 200
@@ -31,14 +38,43 @@ def health():
 
 @app.route("/")
 def index():
-    result, error = cached_analysis(period="1y", output_dir=CHARTS_DIR)
-    data = format_result(result, "Full S&P 500")
-    return render_template("index.html", **data, sectors=list(SECTORS.keys()))
+    result, error = cached_analysis(period="1y")
+    if error or result is None:
+        return render_template("index.html", error=error or "Analysis failed")
 
+    tr = result["total_return"]
+    vol = result["volatility"]
+    sector_ret = result["sector_ret"]
+    sector_vol = result["sector_vol"]
 
-@app.route("/charts/<path:filename>")
-def chart_file(filename):
-    return send_from_directory(CHARTS_DIR, filename)
+    n_up = int((tr > 0).sum())
+    n_down = int((tr <= 0).sum())
+    avg_ret = round(float(tr.mean() * 100), 2)
+    avg_vol = round(float(vol.mean() * 100), 2)
+
+    top5 = [(t, round(float(tr[t] * 100), 2)) for t in tr.sort_values(ascending=False).head(5).index]
+    bot5 = [(t, round(float(tr[t] * 100), 2)) for t in tr.sort_values(ascending=False).tail(5).index]
+
+    top_vol5 = [(t, round(float(vol[t] * 100), 2)) for t in vol.sort_values(ascending=False).head(5).index]
+
+    sectors_list = []
+    for s in sector_ret.sort_values(ascending=False).index:
+        r = round(float(sector_ret[s] * 100), 2)
+        v = round(float(sector_vol[s] * 100), 2)
+        sectors_list.append({"name": s, "return": r, "volatility": v})
+
+    return render_template("index.html",
+                           n_up=n_up, n_down=n_down,
+                           avg_ret=avg_ret, avg_vol=avg_vol,
+                           top5=top5, bot5=bot5, top_vol5=top_vol5,
+                           sectors=sectors_list,
+                           sector_labels=to_json([s["name"] for s in sectors_list]),
+                           sector_returns=to_json([s["return"] for s in sectors_list]),
+                           sector_vols=to_json([s["volatility"] for s in sectors_list]),
+                           perf_labels=to_json([t for t, _ in top5]),
+                           perf_values=to_json([v for _, v in top5]),
+                           perf_bot_labels=to_json([t for t, _ in bot5]),
+                           perf_bot_values=to_json([v for _, v in bot5]))
 
 
 @app.route("/sector", methods=["GET", "POST"])
@@ -48,35 +84,39 @@ def sector():
 
     if not sector_name or sector_name not in SECTORS:
         return render_template("sector.html", sectors=list(SECTORS.keys()),
-                               sector_name=None, stocks=[], error="Select a sector.")
+                               sector_name=None, stocks=[])
 
-    result, error = cached_analysis(sector=sector_name, period=period, output_dir=CHARTS_DIR)
-    if error:
+    result, error = cached_analysis(sector=sector_name, period=period)
+    if error or result is None:
         return render_template("sector.html", sectors=list(SECTORS.keys()),
                                sector_name=sector_name, stocks=[], error=error)
 
-    ticker_data = []
     tr = result["total_return"]
     vol = result["volatility"]
+
+    stocks_list = []
     for t in result["tickers"]:
         if t in tr.index and t in vol.index:
-            ticker_data.append({
+            stocks_list.append({
                 "symbol": t,
-                "return": f"{tr[t] * 100:+.2f}%",
-                "volatility": f"{vol[t] * 100:.2f}%",
+                "return": round(float(tr[t] * 100), 2),
+                "volatility": round(float(vol[t] * 100), 2),
             })
-    ticker_data.sort(key=lambda x: float(x["return"].rstrip("%")), reverse=True)
+    stocks_list.sort(key=lambda x: x["return"], reverse=True)
 
-    charts = result["charts"]
-    for price_ticker in result["tickers"]:
-        if price_ticker in result["prices"].columns:
-            ma_path = plot_price_with_ma(result["prices"], price_ticker, CHARTS_DIR)
-            if ma_path:
-                charts[price_ticker] = os.path.basename(ma_path)
+    avg_ret = round(sum(s["return"] for s in stocks_list) / len(stocks_list), 2) if stocks_list else 0
+    avg_vol = round(sum(s["volatility"] for s in stocks_list) / len(stocks_list), 2) if stocks_list else 0
 
-    return render_template("sector.html", sectors=list(SECTORS.keys()),
-                           sector_name=sector_name, stocks=ticker_data,
-                           charts=result["charts"], period=period)
+    return render_template("sector.html",
+                           sectors=list(SECTORS.keys()),
+                           sector_name=sector_name,
+                           stocks=stocks_list,
+                           avg_ret=avg_ret, avg_vol=avg_vol,
+                           n_stocks=len(stocks_list),
+                           stock_labels=to_json([s["symbol"] for s in stocks_list]),
+                           stock_returns=to_json([s["return"] for s in stocks_list]),
+                           stock_vols=to_json([s["volatility"] for s in stocks_list]),
+                           period=period)
 
 
 @app.route("/stock", methods=["GET", "POST"])
@@ -87,70 +127,38 @@ def stock():
     if not symbol:
         return render_template("stock.html", symbol=None)
 
-    result, error = cached_analysis(tickers=[symbol], period=period, output_dir=CHARTS_DIR)
-    if error:
+    result, error = cached_analysis(tickers=[symbol], period=period)
+    if error or result is None:
         return render_template("stock.html", symbol=symbol, error=error)
 
     tr = result["total_return"]
     vol = result["volatility"]
-    stock_data = {
-        "symbol": symbol,
-        "return": f"{tr[symbol] * 100:+.2f}%" if symbol in tr else "N/A",
-        "volatility": f"{vol[symbol] * 100:.2f}%" if symbol in vol else "N/A",
-    }
+    prices = result["prices"]
 
-    charts = result["charts"]
-    if symbol in result["prices"].columns:
-        ma_path = plot_price_with_ma(result["prices"], symbol, CHARTS_DIR)
-        if ma_path:
-            charts["ma"] = os.path.basename(ma_path)
+    ret_val = round(float(tr[symbol] * 100), 2) if symbol in tr else None
+    vol_val = round(float(vol[symbol] * 100), 2) if symbol in vol else None
 
-    return render_template("stock.html", symbol=symbol, stock=stock_data,
-                           charts=charts, period=period)
+    dates = []
+    close_prices = []
+    ma50 = []
+    ma200 = []
+    if symbol in prices.columns:
+        series = prices[symbol].dropna()
+        dates = [str(d.date()) for d in series.index]
+        close_prices = [round(float(v), 2) for v in series.values]
+        ma50_raw = series.rolling(50).mean()
+        ma200_raw = series.rolling(200).mean()
+        ma50 = [round(float(v), 2) if not pd.isna(v) else None for v in ma50_raw.values]
+        ma200 = [round(float(v), 2) if not pd.isna(v) else None for v in ma200_raw.values]
 
-
-def format_result(result, title):
-    if result is None:
-        return {"title": title, "error": True}
-    tr = result["total_return"]
-    vol = result["volatility"]
-    sector_ret = result["sector_ret"]
-
-    best = {}
-    for t, v in tr.sort_values(ascending=False).head(5).items():
-        best[t] = f"{v * 100:+.2f}%"
-    worst = {}
-    for t, v in tr.sort_values(ascending=False).tail(5).items():
-        worst[t] = f"{v * 100:+.2f}%"
-
-    sectors_data = {}
-    for s in sector_ret.sort_values(ascending=False).index:
-        sectors_data[s] = {
-            "return": f"{sector_ret[s] * 100:+.2f}%",
-            "volatility": f"{result['sector_vol'][s] * 100:.2f}%",
-        }
-
-    top_vol = {}
-    for t, v in vol.sort_values(ascending=False).head(5).items():
-        top_vol[t] = f"{v * 100:.2f}%"
-
-    n_up = int((tr > 0).sum())
-    n_down = int((tr <= 0).sum())
-    avg_ret = f"{tr.mean() * 100:+.2f}%"
-    avg_vol = f"{vol.mean() * 100:.2f}%"
-
-    return {
-        "title": title,
-        "best": best,
-        "worst": worst,
-        "sectors_data": sectors_data,
-        "top_vol": top_vol,
-        "n_up": n_up,
-        "n_down": n_down,
-        "avg_ret": avg_ret,
-        "avg_vol": avg_vol,
-        "charts": result["charts"],
-    }
+    import pandas as pd
+    return render_template("stock.html",
+                           symbol=symbol, ret=ret_val, vol=vol_val,
+                           dates=to_json(dates),
+                           prices=to_json(close_prices),
+                           ma50=to_json(ma50),
+                           ma200=to_json(ma200),
+                           period=period)
 
 
 if __name__ == "__main__":

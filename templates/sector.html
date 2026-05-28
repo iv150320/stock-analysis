@@ -1,32 +1,33 @@
 {% extends "layout.html" %}
 {% block content %}
 
-<div class="page-header">
-    <h1><i class="fas fa-layer-group me-2"></i> Sector Analysis</h1>
-    <p class="mb-0">Explore performance and volatility across stocks within a specific sector.</p>
+<div class="d-flex justify-content-between align-items-start mb-4 animate-in">
+    <div>
+        <h1 class="page-title"><i class="fas fa-layer-group me-2"></i> Sector Analysis</h1>
+        <p class="page-subtitle">Explore stock performance within any market sector.</p>
+    </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-body">
-        <form method="post" class="row g-2 align-items-end">
+<div class="card mb-4 animate-in d1">
+    <div class="card-body p-4">
+        <form method="post" class="row g-3 align-items-end">
             <div class="col-md-5">
-                <label class="form-label fw-semibold text-muted small">Sector</label>
+                <label class="form-label fw-semibold small text-muted">SECTOR</label>
                 <select name="sector" class="form-select">
-                    <option value="">Select a sector...</option>
+                    <option value="">Choose a sector...</option>
                     {% for s in sectors %}
                     <option value="{{ s }}" {% if s == sector_name %}selected{% endif %}>{{ s }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-4">
-                <label class="form-label fw-semibold text-muted small">Period</label>
+                <label class="form-label fw-semibold small text-muted">PERIOD</label>
                 <select name="period" class="form-select">
                     <option value="1mo" {% if period == '1mo' %}selected{% endif %}>1 Month</option>
                     <option value="3mo" {% if period == '3mo' %}selected{% endif %}>3 Months</option>
                     <option value="6mo" {% if period == '6mo' %}selected{% endif %}>6 Months</option>
                     <option value="1y" {% if period == '1y' %}selected{% endif %}>1 Year</option>
                     <option value="2y" {% if period == '2y' %}selected{% endif %}>2 Years</option>
-                    <option value="5y" {% if period == '5y' %}selected{% endif %}>5 Years</option>
                 </select>
             </div>
             <div class="col-md-3">
@@ -37,60 +38,171 @@
 </div>
 
 {% if error %}
-<div class="alert alert-danger"><i class="fas fa-circle-exclamation me-2"></i>{{ error }}</div>
+<div class="alert alert-danger animate-in"><i class="fas fa-circle-exclamation me-2"></i>{{ error }}</div>
 {% endif %}
 
 {% if stocks %}
-<div class="card mb-4">
-    <div class="card-header">
-        <div class="d-flex justify-content-between align-items-center">
-            <span><i class="fas fa-building me-2"></i>{{ sector_name }} — {{ stocks|length }} Stocks</span>
-            <span class="badge bg-primary rounded-pill">{{ period }}</span>
+<div class="row g-3 mb-4">
+    <div class="col-md-4 animate-in d1">
+        <div class="card stat-card">
+            <div class="glow" style="background:var(--blue);"></div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="stat-icon" style="background:rgba(79,172,254,0.12);color:var(--blue);"><i class="fas fa-building"></i></div>
+                    <div>
+                        <div class="stat-label">{{ sector_name }}</div>
+                        <div class="stat-value">{{ n_stocks }} stocks</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead><tr><th>#</th><th>Symbol</th><th class="text-end">Return</th><th class="text-end">Volatility</th><th class="text-end">Risk/Reward</th></tr></thead>
-                <tbody>
-                {% for s in stocks %}
-                {% set ret_val = s.return | replace('+', '') | replace('%', '') | float %}
-                {% set vol_val = s.volatility | replace('%', '') | float %}
-                {% set ratio = (ret_val / vol_val * 100) | round(1) if vol_val > 0 else 0 %}
-                <tr>
-                    <td class="text-muted">{{ loop.index }}</td>
-                    <td><span class="badge-symbol">{{ s.symbol }}</span></td>
-                    <td class="text-end {% if s.return.startswith('+') %}up{% else %}down{% endif %}">{{ s.return }}</td>
-                    <td class="text-end">{{ s.volatility }}</td>
-                    <td class="text-end">
-                        {% if ratio > 1 %}
-                        <span class="badge bg-success-subtle text-success">{{ ratio }}</span>
-                        {% elif ratio > 0 %}
-                        <span class="badge bg-warning-subtle text-warning">{{ ratio }}</span>
-                        {% else %}
-                        <span class="badge bg-danger-subtle text-danger">{{ ratio }}</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+    <div class="col-md-4 animate-in d2">
+        <div class="card stat-card">
+            <div class="glow" style="background:var(--green);"></div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="stat-icon" style="background:rgba(0,184,148,0.12);color:var(--green);"><i class="fas fa-percentage"></i></div>
+                    <div>
+                        <div class="stat-label">Avg Return</div>
+                        <div class="stat-value {% if avg_ret > 0 %}up{% else %}down{% endif %}">
+                            <span class="countup" data-target="{{ avg_ret }}" data-suffix="%">{{ avg_ret }}%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 animate-in d3">
+        <div class="card stat-card">
+            <div class="glow" style="background:var(--purple);"></div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="stat-icon" style="background:rgba(161,140,209,0.12);color:var(--purple);"><i class="fas fa-wave-square"></i></div>
+                    <div>
+                        <div class="stat-label">Avg Volatility</div>
+                        <div class="stat-value">{{ avg_vol }}%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-7 animate-in d1">
+        <div class="card">
+            <div class="card-header"><i class="fas fa-chart-bar me-2"></i>Stock Returns — <span class="badge-symbol">{{ sector_name }}</span></div>
+            <div class="card-body">
+                <div class="chart-container full"><canvas id="stockChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5 animate-in d2">
+        <div class="card">
+            <div class="card-header"><i class="fas fa-table me-2"></i>Stock Rankings</div>
+            <div class="card-body p-0">
+                <div style="max-height:400px;overflow-y:auto;">
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>#</th><th>Symbol</th><th class="text-end">Return</th><th class="text-end">Volatility</th></tr></thead>
+                        <tbody>
+                        {% for s in stocks %}
+                        <tr>
+                            <td class="text-muted">{{ loop.index }}</td>
+                            <td><span class="badge-symbol">{{ s.symbol }}</span></td>
+                            <td class="text-end {% if s.return > 0 %}up{% else %}down{% endif %}">{{ s.return }}%</td>
+                            <td class="text-end">{{ s.volatility }}%</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <div class="row g-4">
-    {% for name, path in charts.items() %}
-    <div class="col-md-6">
+    <div class="col-lg-12 animate-in d1">
         <div class="card">
-            <div class="card-header"><h6 class="mb-0"><i class="fas fa-image me-2"></i>{{ name }}</h6></div>
-            <div class="card-body text-center p-3">
-                <img class="chart-img" src="/charts/{{ path | basename }}" alt="{{ name }}">
+            <div class="card-header"><i class="fas fa-chart-scatter me-2"></i>Return vs Volatility</div>
+            <div class="card-body">
+                <div class="chart-container full"><canvas id="scatterChart"></canvas></div>
             </div>
         </div>
     </div>
-    {% endfor %}
 </div>
-{% endif %}
 
+<script>
+const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+const ch = (dark, light) => isDark() ? dark : light;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const rets = {{ stock_returns | safe }};
+    const vols = {{ stock_vols | safe }};
+    const labels = {{ stock_labels | safe }};
+
+    registerChart('stockChart', {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Return %',
+                data: rets,
+                backgroundColor: rets.map(v => v >= 0 ?
+                    'rgba(0,184,148,0.7)' : 'rgba(225,112,85,0.7)'),
+                borderColor: rets.map(v => v >= 0 ?
+                    'rgba(0,184,148,1)' : 'rgba(225,112,85,1)'),
+                borderWidth: 2,
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.x.toFixed(2) + '%' } } },
+            scales: {
+                x: { grid: { color: ch('rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)') } },
+                y: { grid: { display: false } }
+            }
+        }
+    });
+
+    registerChart('scatterChart', {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Stocks',
+                data: labels.map((l, i) => ({ x: vols[i], y: rets[i] })),
+                backgroundColor: rets.map(v => v >= 0 ?
+                    'rgba(0,184,148,0.6)' : 'rgba(225,112,85,0.6)'),
+                borderColor: rets.map(v => v >= 0 ?
+                    'rgba(0,184,148,1)' : 'rgba(225,112,85,1)'),
+                borderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 9,
+            }]
+        },
+        options: {
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ctx.raw.label + ': ' + ctx.raw.y.toFixed(2) + '% return, ' + ctx.raw.x.toFixed(2) + '% vol'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Volatility %', font: { weight: 'bold' } },
+                    grid: { color: ch('rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)') }
+                },
+                y: {
+                    title: { display: true, text: 'Return %', font: { weight: 'bold' } },
+                    grid: { color: ch('rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)') }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endif %}
 {% endblock %}

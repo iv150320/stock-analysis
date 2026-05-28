@@ -1,20 +1,22 @@
 {% extends "layout.html" %}
 {% block content %}
 
-<div class="page-header">
-    <h1><i class="fas fa-search me-2"></i> Stock Lookup</h1>
-    <p class="mb-0">Get performance metrics and charts for any publicly traded stock.</p>
+<div class="d-flex justify-content-between align-items-start mb-4 animate-in">
+    <div>
+        <h1 class="page-title"><i class="fas fa-search me-2"></i> Stock Lookup</h1>
+        <p class="page-subtitle">Get interactive price charts and performance metrics for any stock.</p>
+    </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-body">
-        <form method="post" class="row g-2 align-items-end">
+<div class="card mb-4 animate-in d1">
+    <div class="card-body p-4">
+        <form method="post" class="row g-3 align-items-end">
             <div class="col-md-5">
-                <label class="form-label fw-semibold text-muted small">Ticker Symbol</label>
-                <input type="text" name="symbol" class="form-control" placeholder="e.g. AAPL, MSFT, TSLA" value="{{ symbol or '' }}" style="text-transform:uppercase; font-weight:600;">
+                <label class="form-label fw-semibold small text-muted">TICKER</label>
+                <input type="text" name="symbol" class="form-control" placeholder="e.g. AAPL, MSFT, NVDA" value="{{ symbol or '' }}" style="text-transform:uppercase;font-weight:700;font-family:'SF Mono','Fira Code',monospace;">
             </div>
             <div class="col-md-4">
-                <label class="form-label fw-semibold text-muted small">Period</label>
+                <label class="form-label fw-semibold small text-muted">PERIOD</label>
                 <select name="period" class="form-select">
                     <option value="1mo" {% if period == '1mo' %}selected{% endif %}>1 Month</option>
                     <option value="3mo" {% if period == '3mo' %}selected{% endif %}>3 Months</option>
@@ -32,59 +34,150 @@
 </div>
 
 {% if error %}
-<div class="alert alert-danger"><i class="fas fa-circle-exclamation me-2"></i>{{ error }}</div>
+<div class="alert alert-danger animate-in"><i class="fas fa-circle-exclamation me-2"></i>{{ error }}</div>
 {% endif %}
 
-{% if stock %}
+{% if ret is not none %}
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card stat-card blue">
+    <div class="col-md-4 animate-in d1">
+        <div class="card stat-card">
+            <div class="glow" style="background:var(--blue);"></div>
             <div class="card-body">
-                <p class="card-subtitle text-muted mb-1"><i class="fas fa-coins me-1"></i> Symbol</p>
-                <h2 class="card-text mb-0" style="font-size:2.5rem;">{{ stock.symbol }}</h2>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="stat-icon" style="background:rgba(79,172,254,0.12);color:var(--blue);"><i class="fas fa-coins"></i></div>
+                    <div>
+                        <div class="stat-label">Symbol</div>
+                        <div class="stat-value" style="font-family:'SF Mono','Fira Code',monospace;">{{ symbol }}</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card stat-card {% if stock.return.startswith('+') %}green{% else %}red{% endif %}">
+    <div class="col-md-4 animate-in d2">
+        <div class="card stat-card">
+            <div class="glow" style="background:{% if ret > 0 %}var(--green){% else %}var(--red){% endif %};"></div>
             <div class="card-body">
-                <p class="card-subtitle text-muted mb-1"><i class="fas fa-percentage me-1"></i> Total Return</p>
-                <h2 class="card-text mb-0 {% if stock.return.startswith('+') %}up{% else %}down{% endif %}">{{ stock.return }}</h2>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="stat-icon" style="background:{% if ret > 0 %}rgba(0,184,148,0.12);color:var(--green){% else %}rgba(225,112,85,0.12);color:var(--red){% endif %}"><i class="fas fa-percentage"></i></div>
+                    <div>
+                        <div class="stat-label">Total Return</div>
+                        <div class="stat-value {% if ret > 0 %}up{% else %}down{% endif %}">
+                            <span class="countup" data-target="{{ ret }}" data-suffix="%">{{ ret }}%</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card stat-card purple">
+    <div class="col-md-4 animate-in d3">
+        <div class="card stat-card">
+            <div class="glow" style="background:var(--purple);"></div>
             <div class="card-body">
-                <p class="card-subtitle text-muted mb-1"><i class="fas fa-wave-square me-1"></i> Annualized Volatility</p>
-                <h2 class="card-text mb-0">{{ stock.volatility }}</h2>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="stat-icon" style="background:rgba(161,140,209,0.12);color:var(--purple);"><i class="fas fa-wave-square"></i></div>
+                    <div>
+                        <div class="stat-label">Volatility</div>
+                        <div class="stat-value">{{ vol }}%</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-{% if charts %}
-<div class="row g-4">
-    {% for name, path in charts.items() %}
-    <div class="col-lg-{% if charts|length == 1 %}12{% else %}6{% endif %}">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    {% if name == 'ma' %}<i class="fas fa-chart-line me-2"></i>{{ stock.symbol }} — Moving Averages
-                    {% elif name == 'top_performers' %}<i class="fas fa-chart-bar me-2"></i>Ranking
-                    {% elif name == 'volatility' %}<i class="fas fa-gauge-high me-2"></i>Volatility Context
-                    {% else %}<i class="fas fa-image me-2"></i>{{ name }}
-                    {% endif %}
-                </h6>
-            </div>
-            <div class="card-body text-center p-3">
-                <img class="chart-img" src="/charts/{{ path | basename }}" alt="{{ name }}">
-            </div>
-        </div>
+<div class="card animate-in d1">
+    <div class="card-header">
+        <i class="fas fa-chart-line me-2"></i> {{ symbol }} Price History
+        <span class="badge bg-secondary ms-2">{{ period }}</span>
     </div>
-    {% endfor %}
+    <div class="card-body">
+        <div class="chart-container" style="height:500px;"><canvas id="priceChart"></canvas></div>
+    </div>
 </div>
-{% endif %}
-{% endif %}
 
+<script>
+const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+const ch = (dark, light) => isDark() ? dark : light;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const dates = {{ dates | safe }};
+    const prices = {{ prices | safe }};
+    const ma50 = {{ ma50 | safe }};
+    const ma200 = {{ ma200 | safe }};
+
+    registerChart('priceChart', {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [
+                {
+                    label: '{{ symbol }} Close',
+                    data: prices,
+                    borderColor: '#4facfe',
+                    backgroundColor: (ctx) => {
+                        const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 400);
+                        g.addColorStop(0, 'rgba(79,172,254,0.3)');
+                        g.addColorStop(1, 'rgba(79,172,254,0.0)');
+                        return g;
+                    },
+                    fill: true,
+                    borderWidth: 2.5,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    tension: 0.3,
+                },
+                {
+                    label: '50-day MA',
+                    data: ma50,
+                    borderColor: '#f6d365',
+                    borderWidth: 2,
+                    borderDash: [6, 3],
+                    pointRadius: 0,
+                    tension: 0.3,
+                },
+                {
+                    label: '200-day MA',
+                    data: ma200,
+                    borderColor: '#fda085',
+                    borderWidth: 2,
+                    borderDash: [6, 3],
+                    pointRadius: 0,
+                    tension: 0.3,
+                }
+            ]
+        },
+        options: {
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: {
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'line',
+                        font: { weight: '600' },
+                        color: ch('#e6edf3', '#1a1a2e')
+                    }
+                },
+                tooltip: {
+                    backgroundColor: ch('rgba(22,27,34,0.9)', 'rgba(255,255,255,0.9)'),
+                    titleColor: ch('#e6edf3', '#1a1a2e'),
+                    bodyColor: ch('#8b949e', '#6c757d'),
+                    borderColor: ch('rgba(255,255,255,0.1)', 'rgba(0,0,0,0.1)'),
+                    borderWidth: 1,
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { maxTicksLimit: 12, color: ch('#8b949e', '#6c757d') }
+                },
+                y: {
+                    grid: { color: ch('rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)') },
+                    ticks: { color: ch('#8b949e', '#6c757d') }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endif %}
 {% endblock %}
