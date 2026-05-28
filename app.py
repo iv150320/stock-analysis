@@ -1,6 +1,8 @@
 import json
 import os
 import time
+
+import pandas as pd
 from flask import Flask, render_template, request
 
 app = Flask(__name__)
@@ -90,7 +92,7 @@ def sector():
 
     if not sector_name or sector_name not in SECTORS:
         return render_template("sector.html", sectors=list(SECTORS.keys()),
-                               sector_name=None, stocks=[])
+            sector_name=None, stocks=[], period=period)
 
     result, error = cached_analysis(sector=sector_name, period=period)
     if error or result is None:
@@ -157,7 +159,6 @@ def stock():
         ma50 = [round(float(v), 2) if not pd.isna(v) else None for v in ma50_raw.values]
         ma200 = [round(float(v), 2) if not pd.isna(v) else None for v in ma200_raw.values]
 
-    import pandas as pd
     return render_template("stock.html",
                            symbol=symbol, ret=ret_val, vol=vol_val,
                            dates=to_json(dates),
