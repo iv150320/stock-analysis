@@ -1,369 +1,446 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}StockScope &mdash; S&amp;P 500 Analytics{% endblock %}</title>
-    
-    <!-- CDNs: Tailwind, FontAwesome, Chart.js, Inter Font -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}StockScope{% endblock %}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+window.onerror=function(m,u,l){console.error('JS Error:',m,'Line:',l);};
+function _waitChartJs(cb){if(typeof Chart!=='undefined')cb();else{console.log('Waiting for Chart.js...');setTimeout(function(){_waitChartJs(cb);},200);}}
+var _charts={};
+function _mk(id,cfg){
+  if(typeof Chart==='undefined'){console.error('Chart.js not loaded');return null;}
+  var el=document.getElementById(id);
+  if(!el){console.warn('Canvas not found:',id);return null;}
+  if(_charts[id]){try{_charts[id].destroy();}catch(e){}delete _charts[id];}
+  cfg.options=cfg.options||{};
+  cfg.options.responsive=true;
+  cfg.options.maintainAspectRatio=false;
+  try{_decorate(cfg.options);}catch(e){console.error('_decorate error:',e);}
+  try{_charts[id]=new Chart(el,cfg);return _charts[id];}
+  catch(e){console.error('Chart creation error:',id,e);return null;}
+}
+function _pal(){
+  var dk=document.documentElement.getAttribute('data-theme')==='dark';
+  return{
+    grid:dk?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)',
+    tick:dk?'#a0aec0':'#4a5568',
+    txt:dk?'#f7fafc':'#1a202c',
+    card:dk?'#1a2332':'#ffffff',
+    bdr:dk?'#2d3748':'#e2e8f0'
+  };
+}
+function _decorate(o){
+  var c=_pal();
+  if(o.scales){
+    Object.values(o.scales).forEach(function(s){
+      if(s.grid&&s.grid._a){s.grid.color=c.grid;s.grid.drawBorder=false;}
+      if(s.ticks&&s.ticks._a){s.ticks.color=c.tick;s.ticks.font={size:11,family:'Inter,sans-serif',weight:'500'};}
+    });
+  }
+  if(o.plugins&&o.plugins.legend&&o.plugins.legend.labels&&o.plugins.legend.labels._a){
+    o.plugins.legend.labels.color=c.tick;
+    o.plugins.legend.labels.usePointStyle=true;
+    o.plugins.legend.labels.padding=16;
+    o.plugins.legend.labels.font={size:11,family:'Inter,sans-serif',weight:'600'};
+  }
+  if(o.plugins&&o.plugins.tooltip){
+    o.plugins.tooltip=Object.assign({
+      backgroundColor:c.card,titleColor:c.txt,bodyColor:c.tick,
+      borderColor:c.bdr,borderWidth:1,cornerRadius:10,padding:12,
+      titleFont:{size:12,family:'Inter,sans-serif',weight:'700'},
+      bodyFont:{size:12,family:'Inter,sans-serif'},
+      boxPadding:4,usePointStyle:true
+    },o.plugins.tooltip);
+  }
+}
+function _autoG(){return{display:true,_a:true};}
+function _autoT(){return{_a:true};}
+function _autoL(){return{labels:{_a:true}};}
+function _autoTp(){return{};}
+function _recolor(){
+  Object.values(_charts).forEach(function(c){_decorate(c.options);c.update();});
+}
 
-    <script>
-        // Configure Tailwind with custom colors and dark mode strategy
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#f0f7ff',
-                            100: '#e0effe',
-                            200: '#b9defe',
-                            300: '#7cc2fd',
-                            400: '#36a2fc',
-                            500: '#0c86eb',
-                            600: '#0267c7',
-                            700: '#0352a1',
-                            800: '#074685',
-                            900: '#0c3b6f',
-                            950: '#08254b',
-                        },
-                        accent: {
-                            green: '#10b981',
-                            red: '#ef4444',
-                            purple: '#8b5cf6',
-                            yellow: '#f59e0b',
-                            cyan: '#06b6d4',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+var _t;
+try{_t=localStorage.getItem('theme')||'dark';}catch(e){_t='dark';}
+function _applyTheme(){
+  var h=document.documentElement;
+  if(_t==='dark')h.setAttribute('data-theme','dark');
+  else h.removeAttribute('data-theme');
+  var ic=document.getElementById('thmIco');
+  if(ic){
+    ic.className=_t==='dark'?'fa-solid fa-sun':'fa-solid fa-moon';
+    ic.style.color=_t==='dark'?'#f6ad55':'#805ad5';
+  }
+  _recolor();
+}
+function _toggleTheme(){
+  _t=_t==='dark'?'light':'dark';
+  try{localStorage.setItem('theme',_t);}catch(e){}
+  _applyTheme();
+}
+function _toggleMob(){
+  var n=document.getElementById('mobNav');
+  if(!n)return;
+  if(n.style.display==='flex')n.style.display='none';
+  else n.style.display='flex';
+}
+_applyTheme();
+</script>
+<style>
+:root{
+  --bg:#f7fafc;--bg2:#ffffff;--bg3:#edf2f7;
+  --bd:#e2e8f0;--tx:#1a202c;--tx2:#4a5568;--tx3:#a0aec0;
+  --ac:#4299e1;--ac2:rgba(66,153,225,0.1);
+  --gn:#48bb78;--gn2:rgba(72,187,120,0.1);
+  --rd:#f56565;--rd2:rgba(245,101,101,0.1);
+  --pu:#805ad5;--pu2:rgba(128,90,213,0.1);
+  --am:#ecc94b;--am2:rgba(236,201,75,0.1);
+  --cy:#38b2ac;--cy2:rgba(56,178,172,0.1);
+  --sh:0 4px 20px rgba(0,0,0,0.06);
+  --sh2:0 10px 40px rgba(0,0,0,0.1);
+}
+[data-theme="dark"]{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --bd:#30363d;--tx:#f0f6fc;--tx2:#8b949e;--tx3:#484f58;
+  --ac:#58a6ff;--ac2:rgba(88,166,255,0.15);
+  --gn:#3fb950;--gn2:rgba(63,185,80,0.15);
+  --rd:#f85149;--rd2:rgba(248,81,73,0.15);
+  --pu:#bc8cff;--pu2:rgba(188,140,255,0.15);
+  --am:#d29922;--am2:rgba(210,153,34,0.15);
+  --cy:#39d353;--cy2:rgba(57,211,83,0.15);
+  --sh:0 4px 20px rgba(0,0,0,0.3);
+  --sh2:0 10px 40px rgba(0,0,0,0.5);
+}
+*{box-sizing:border-box;}
+body{
+  font-family:'Inter',-apple-system,sans-serif;
+  background:var(--bg);color:var(--tx);
+  margin:0;min-height:100vh;
+  display:flex;flex-direction:column;
+  transition:background .3s,color .3s;
+  line-height:1.6;
+  overflow-x:hidden;
+}
+.mono{font-family:'JetBrains Mono',monospace;}
 
-    <style type="text/tailwindcss">
-        @layer base {
-            :root {
-                --bg-app: #f8fafc;
-                --bg-card: #ffffff;
-                --border-color: #e2e8f0;
-                --text-primary: #0f172a;
-                --text-secondary: #475569;
-                --text-muted: #94a3b8;
-                --glow-color: rgba(12, 134, 235, 0.05);
-            }
-            .dark {
-                --bg-app: #090d16;
-                --bg-card: #0f172a;
-                --border-color: #1e293b;
-                --text-primary: #f8fafc;
-                --text-secondary: #94a3b8;
-                --text-muted: #475569;
-                --glow-color: rgba(12, 134, 235, 0.15);
-            }
-            body {
-                @apply transition-colors duration-300;
-                background-color: var(--bg-app);
-                color: var(--text-primary);
-            }
-        }
+/* NAV */
+.site-nav{
+  background:var(--bg2);
+  border-bottom:1px solid var(--bd);
+  position:sticky;top:0;z-index:999;
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  transition:background .3s,border-color .3s;
+}
+[data-theme="dark"] .site-nav{background:rgba(22,27,34,0.85);}
+.nav-inner{
+  max-width:1320px;margin:0 auto;
+  padding:0 24px;height:64px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+@media(max-width:576px){
+  .nav-inner{padding:0 16px;}
+}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--tx);font-weight:900;font-size:1.25rem;letter-spacing:-0.5px;}
+.brand-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--ac),var(--pu));
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:.9rem;
+  box-shadow:0 4px 12px var(--ac2);
+}
+.nav-links{display:flex;gap:4px;align-items:center;}
+.nav-links a{
+  color:var(--tx2);text-decoration:none;font-weight:600;font-size:.85rem;
+  padding:8px 16px;border-radius:10px;transition:all .2s;
+  display:flex;align-items:center;gap:8px;
+}
+.nav-links a:hover{color:var(--tx);background:var(--ac2);}
+.nav-links a.on{color:var(--ac);background:var(--ac2);}
+.nav-right{display:flex;align-items:center;gap:8px;}
+.thm-btn{
+  width:38px;height:38px;border-radius:10px;border:1px solid var(--bd);
+  background:var(--bg3);color:var(--tx2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.9rem;transition:all .2s;
+}
+.thm-btn:hover{background:var(--bd);color:var(--tx);}
+.hamburger{display:none;}
+@media(max-width:767px){
+  .nav-links{display:none;}
+  .hamburger{display:flex;}
+}
+.mob-menu{
+  display:none;flex-direction:column;gap:4px;
+  background:var(--bg2);border-bottom:1px solid var(--bd);
+  padding:12px 24px;
+  position:absolute;top:64px;left:0;right:0;
+  box-shadow:var(--sh2);z-index:998;
+  animation:slideDown 0.25s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes slideDown{
+  from{opacity:0;transform:translateY(-10px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.mob-menu a{
+  color:var(--tx2);text-decoration:none;font-weight:600;font-size:.9rem;
+  padding:12px 16px;border-radius:10px;
+  display:flex;align-items:center;gap:10px;
+  transition:all 0.2s;
+}
+.mob-menu a:hover, .mob-menu a.on{background:var(--ac2);color:var(--ac);}
 
-        /* Glassmorphic Navigation with subtle animated grid background */
-        .glass-nav {
-            @apply backdrop-blur-md bg-opacity-80 transition-all duration-300;
-            background-color: rgba(15, 23, 42, 0.1);
-            border-bottom: 1px solid var(--border-color);
-        }
-        .dark .glass-nav {
-            background-color: rgba(15, 23, 42, 0.6);
-        }
+/* MAIN */
+main{flex:1;max-width:1320px;margin:0 auto;width:100%;padding:24px;transition:padding 0.3s;}
+@media(max-width:768px){
+  main{padding:16px;}
+}
+@media(max-width:576px){
+  main{padding:12px;}
+}
 
-        /* Premium card styles with glow effects and custom borders */
-        .premium-card {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            @apply rounded-2xl shadow-sm transition-all duration-300 relative overflow-hidden;
-        }
-        .premium-card::before {
-            content: '';
-            @apply absolute top-0 left-0 right-0 h-[2px] opacity-0 transition-opacity duration-300;
-            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
-        }
-        .premium-card:hover::before {
-            @apply opacity-100;
-        }
-        .premium-card:hover {
-            @apply shadow-lg -translate-y-1;
-            border-color: rgba(59, 130, 246, 0.3);
-            box-shadow: 0 10px 30px -10px var(--glow-color);
-        }
+/* CARDS */
+.card-s{
+  background:var(--bg2);border:1px solid var(--bd);
+  border-radius:16px;overflow:hidden;
+  transition:transform .25s,box-shadow .25s,border-color .25s;
+}
+.card-s:hover{
+  transform:translateY(-3px);
+  box-shadow:var(--sh2);
+  border-color:var(--ac);
+}
+.card-s-head{
+  padding:16px 20px;border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;gap:10px;
+  font-weight:700;font-size:.8rem;text-transform:uppercase;
+  letter-spacing:.6px;color:var(--tx2);
+}
+.card-s-head .ico{
+  width:28px;height:28px;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.8rem;
+}
+.card-s-body{padding:20px;}
+@media(max-width:576px){
+  .card-s-head{padding:14px 16px;}
+  .card-s-body{padding:16px;}
+}
 
-        /* Hero banner custom radial gradient */
-        .premium-hero {
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
-            @apply relative overflow-hidden rounded-3xl border border-blue-900/30;
-        }
-        .premium-hero::after {
-            content: '';
-            @apply absolute inset-0 pointer-events-none;
-            background: radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.15), transparent 50%),
-                        radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.12), transparent 50%);
-        }
+/* STAT CARDS */
+.stat-c{position:relative;overflow:hidden;}
+.stat-c .glow{
+  position:absolute;top:-30%;right:-15%;width:100px;height:100px;
+  border-radius:50%;filter:blur(40px);opacity:.12;pointer-events:none;
+  transition:opacity .3s;
+}
+.stat-c:hover .glow{opacity:.22;}
+.stat-c .glow.bl{background:var(--ac);}
+.stat-c .glow.gr{background:var(--gn);}
+.stat-c .glow.rd{background:var(--rd);}
+.stat-c .glow.pu{background:var(--pu);}
+.stat-ico{
+  width:44px;height:44px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;flex-shrink:0;
+}
+.stat-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--tx2);margin-bottom:2px;}
+.stat-val{
+  font-size:clamp(1.25rem, 5vw, 1.7rem);
+  font-weight:900;letter-spacing:-.7px;line-height:1.1;font-family:'JetBrains Mono',monospace;
+}
+.c-green{color:var(--gn)!important;}
+.c-red{color:var(--rd)!important;}
 
-        /* Animated indicator dots */
-        .pulse-indicator {
-            @apply relative flex h-2 w-2;
-        }
-        .pulse-indicator .ping {
-            @apply animate-ping absolute inline-flex h-full w-full rounded-full opacity-75;
-        }
-        .pulse-indicator .dot {
-            @apply relative inline-flex rounded-full h-2 w-2;
-        }
+/* HERO */
+.hero{
+  background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);
+  border:1px solid var(--bd);border-radius:20px;
+  padding:36px 40px;margin-bottom:24px;position:relative;overflow:hidden;
+}
+[data-theme="light"] .hero{
+  background:linear-gradient(135deg,#1e3a5f 0%,#2d5a8e 50%,#1e3a5f 100%);
+}
+.hero::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at 75% 25%,rgba(88,166,255,0.1),transparent 50%),
+  radial-gradient(circle at 25% 75%,rgba(188,140,255,0.08),transparent 50%);
+}
+.hero h1{
+  font-weight:900;
+  font-size:clamp(1.5rem, 6vw, 2.2rem);
+  color:#fff;margin:0 0 8px;letter-spacing:-.8px;position:relative;
+}
+.hero p{
+  color:#94a3b8;
+  font-size:clamp(0.8rem, 3.5vw, 0.95rem);
+  margin:0;position:relative;
+}
+.hero-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 12px;border-radius:20px;font-size:.7rem;font-weight:700;
+  background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.2);
+  color:var(--ac);margin-bottom:12px;position:relative;
+}
+.hero-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--gn);box-shadow:0 0 6px var(--gn);}
+.hero-stat{
+  text-align:center;padding:12px 16px;
+  background:rgba(255,255,255,0.03);border-radius:10px;
+  border:1px solid rgba(255,255,255,0.06);
+}
+.hero-stat-v{font-size:clamp(1.1rem, 4vw, 1.5rem);font-weight:900;color:#fff;font-family:'JetBrains Mono',monospace;display:block;}
+.hero-stat-l{font-size:.6rem;color:#64748b;text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-top:2px;display:block;}
 
-        /* Custom scrollbar matching premium theme */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            @apply rounded-full bg-slate-300 dark:bg-slate-800;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            @apply bg-slate-400 dark:bg-slate-700;
-        }
-    </style>
+@media(max-width:576px){
+  .hero{padding:24px 20px;margin-bottom:16px;}
+}
+
+/* SEARCH BOX */
+.sbox{
+  background:var(--bg2);border:1px solid var(--bd);border-radius:16px;
+  padding:20px 24px;margin-bottom:24px;position:relative;overflow:hidden;
+}
+.sbox::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--ac),var(--pu),var(--cy));
+}
+.sbox .flbl{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--tx2);margin-bottom:6px;display:block;}
+.sbox .fctl,.sbox .fsel{
+  background:var(--bg3);border:1.5px solid var(--bd);border-radius:10px;
+  color:var(--tx);padding:10px 14px;font-size:.88rem;width:100%;transition:all .2s;
+}
+.sbox .fctl:focus,.sbox .fsel:focus{
+  border-color:var(--ac);box-shadow:0 0 0 3px var(--ac2);outline:none;
+}
+.btn-go{
+  background:linear-gradient(135deg,var(--ac),var(--pu));
+  border:none;border-radius:10px;font-weight:700;font-size:.85rem;
+  padding:10px 22px;color:#fff;cursor:pointer;transition:all .25s;
+  box-shadow:0 4px 12px var(--ac2);width:100%;
+}
+.btn-go:hover{transform:translateY(-2px);box-shadow:0 8px 20px var(--ac2);filter:brightness(1.1);}
+
+/* CHARTS */
+.cv{position:relative;width:100%;}
+.cv.h250{height:250px;}.cv.h300{height:300px;}
+.cv.h350{height:350px;}.cv.h400{height:400px;}
+.cv.h480{height:480px;}
+
+@media(max-width:768px){
+  .cv.h400{height:300px;}
+  .cv.h480{height:350px;}
+}
+
+/* TABLE RESPONSIVENESS REVOLUTION */
+.tbl-wrap{
+  width:100%;overflow-x:auto;
+  position:relative;
+  -webkit-overflow-scrolling:touch;
+}
+.tbl{width:100%;border-collapse:collapse;color:var(--tx);min-width:500px;}
+.tbl th{
+  font-weight:800;font-size:.65rem;text-transform:uppercase;
+  letter-spacing:.7px;color:var(--tx2);padding:12px 16px;
+  background:var(--bg3);border-bottom:1px solid var(--bd);text-align:left;
+}
+.tbl td{padding:12px 16px;border-bottom:1px solid var(--bd);font-size:.85rem;vertical-align:middle;}
+.tbl tbody tr{transition:background .15s;}
+.tbl tbody tr:hover{background:var(--ac2);}
+
+/* BADGES */
+.bdg-sym{
+  background:var(--bg3);border:1px solid var(--bd);border-radius:6px;
+  padding:3px 8px;font-weight:700;font-size:.78rem;
+  font-family:'JetBrains Mono',monospace;color:var(--tx);
+  white-space:nowrap;display:inline-block;
+}
+.bdg-sig{
+  padding:4px 12px;border-radius:20px;font-weight:700;
+  font-size:.65rem;letter-spacing:.4px;text-transform:uppercase;display:inline-block;
+  white-space:nowrap;
+}
+.sig-s{background:var(--gn2);color:var(--gn);}
+.sig-m{background:var(--am2);color:var(--am);}
+.sig-w{background:var(--rd2);color:var(--rd);}
+
+/* MISC */
+.up{color:var(--gn)!important;}
+.dn{color:var(--rd)!important;}
+.empty-state{text-align:center;padding:48px 20px;}
+.empty-state .eico{width:56px;height:56px;border-radius:14px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;}
+.empty-state h3{font-weight:800;font-size:1.1rem;margin:0 0 6px;}
+.empty-state p{color:var(--tx2);font-size:.85rem;margin:0;}
+.dot-live{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.dot-live.g{background:var(--gn);box-shadow:0 0 6px var(--gn);}
+.dot-live.r{background:var(--rd);box-shadow:0 0 6px var(--rd);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.ani{animation:fadeUp .4s ease both;opacity:0;}
+.ani.d1{animation-delay:.05s;}.ani.d2{animation-delay:.1s;}
+.ani.d3{animation-delay:.15s;}.ani.d4{animation-delay:.2s;}
+
+footer{
+  border-top:1px solid var(--bd);padding:20px 0;
+  background:var(--bg2);font-size:.78rem;color:var(--tx2);
+  margin-top:auto;
+}
+</style>
 </head>
-<body class="min-h-screen flex flex-col font-sans">
+<body>
 
-    <!-- Premium Navigation -->
-    <header class="glass-nav sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- Logo -->
-                <a href="/" class="flex items-center gap-3 group">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform duration-300">
-                        <i class="fa-solid fa-chart-line text-lg"></i>
-                    </div>
-                    <span class="text-xl font-black tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent group-hover:opacity-90 transition-opacity">
-                        StockScope
-                    </span>
-                </a>
+<header class="site-nav">
+  <div class="nav-inner">
+    <a href="/" class="brand">
+      <div class="brand-icon"><i class="fa-solid fa-chart-line"></i></div>
+      StockScope
+    </a>
+    <div class="nav-links" id="dskNav">
+      <a href="/"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+      <a href="/sector"><i class="fa-solid fa-layer-group"></i> Sectors</a>
+      <a href="/stock"><i class="fa-solid fa-magnifying-glass-chart"></i> Stock</a>
+    </div>
+    <div class="nav-right">
+      <button class="thm-btn" onclick="_toggleTheme()" title="Toggle theme">
+        <i id="thmIco" class="fa-solid fa-sun"></i>
+      </button>
+      <button class="thm-btn hamburger" onclick="_toggleMob()">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+    </div>
+  </div>
+  <div class="mob-menu" id="mobNav">
+    <a href="/"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+    <a href="/sector"><i class="fa-solid fa-layer-group"></i> Sectors</a>
+    <a href="/stock"><i class="fa-solid fa-magnifying-glass-chart"></i> Stock</a>
+  </div>
+</header>
 
-                <!-- Navigation Links -->
-                <nav class="hidden md:flex items-center gap-1">
-                    <a href="/" class="nav-btn px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-250">
-                        <i class="fa-solid fa-shapes"></i> Dashboard
-                    </a>
-                    <a href="/sector" class="nav-btn px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-250">
-                        <i class="fa-solid fa-chart-pie"></i> Sectors
-                    </a>
-                    <a href="/stock" class="nav-btn px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-250">
-                        <i class="fa-solid fa-magnifying-glass"></i> Stock Lookup
-                    </a>
-                </nav>
+<main>
+{% block content %}{% endblock %}
+</main>
 
-                <!-- Action Group -->
-                <div class="flex items-center gap-3">
-                    <!-- Light/Dark Toggle -->
-                    <button id="themeBtn" onclick="toggleTheme()" class="theme-toggle w-10 h-10 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm border border-slate-200 dark:border-slate-700" title="Toggle Theme">
-                        <i id="themeIcon" class="fa-solid fa-sun text-md"></i>
-                    </button>
-                    <!-- Mobile Nav Trigger -->
-                    <button onclick="toggleMobileNav()" class="md:hidden w-10 h-10 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200">
-                        <i class="fa-solid fa-bars"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Mobile Dropdown Navigation -->
-        <div id="mobileNav" class="hidden md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 flex flex-col gap-2">
-            <a href="/" class="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
-                <i class="fa-solid fa-shapes text-blue-500"></i> Dashboard
-            </a>
-            <a href="/sector" class="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
-                <i class="fa-solid fa-chart-pie text-purple-500"></i> Sectors
-            </a>
-            <a href="/stock" class="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
-                <i class="fa-solid fa-magnifying-glass text-cyan-500"></i> Stock Lookup
-            </a>
-        </div>
-    </header>
+<footer>
+  <div style="max-width:1320px;margin:0 auto;padding:0 24px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;">
+    <span>&copy; 2026 StockScope &bull; S&amp;P 500 Market Intelligence</span>
+    <span>CS50x Final Project &bull; Data via Yahoo Finance</span>
+  </div>
+</footer>
 
-    <!-- Main Content Area -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {% block content %}{% endblock %}
-    </main>
-
-    <!-- Footer -->
-    <footer class="border-t border-slate-200 dark:border-slate-800 py-8 bg-white dark:bg-slate-950/40 mt-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center md:flex md:items-center md:justify-between">
-            <p class="text-sm text-slate-500 dark:text-slate-400">
-                &copy; 2026 StockScope &bull; S&amp;P 500 Market Intelligence Tool.
-            </p>
-            <p class="text-xs text-slate-400 dark:text-slate-500 mt-2 md:mt-0">
-                Designed for CS50x Final Project &bull; Live market data sourced via Yahoo Finance.
-            </p>
-        </div>
-    </footer>
-
-    <!-- Core Chart Theme Orchestrator -->
-    <script>
-        // Set active state for nav items
-        document.addEventListener("DOMContentLoaded", function() {
-            const currentPath = window.location.pathname;
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                const path = btn.getAttribute('href');
-                if (currentPath === path) {
-                    btn.classList.add('active');
-                }
-            });
-        });
-
-        // Manage global theme (dark/light)
-        let _theme = localStorage.getItem('theme') || 'dark';
-        
-        function applyTheme() {
-            const html = document.documentElement;
-            const icon = document.getElementById('themeIcon');
-            if (_theme === 'dark') {
-                html.classList.add('dark');
-                icon.className = 'fa-solid fa-sun text-amber-500';
-            } else {
-                html.classList.remove('dark');
-                icon.className = 'fa-solid fa-moon text-indigo-500';
-            }
-            // Repaint all active ChartJS canvases with appropriate colors
-            updateChartColors();
-        }
-
-        function toggleTheme() {
-            _theme = _theme === 'dark' ? 'light' : 'dark';
-            localStorage.setItem('theme', _theme);
-            applyTheme();
-        }
-
-        function toggleMobileNav() {
-            const nav = document.getElementById('mobileNav');
-            nav.classList.toggle('hidden');
-        }
-
-        // Apply theme immediately to prevent layout flash
-        applyTheme();
-
-        // Standardized ChartJS configuration builder
-        var charts = {};
-
-        function mk(id, opts) {
-            var el = document.getElementById(id);
-            if (!el) return null;
-            
-            // Clean up existing instance to avoid memory leaks
-            if (charts[id]) {
-                charts[id].destroy();
-                delete charts[id];
-            }
-            
-            opts.options = opts.options || {};
-            opts.options.responsive = true;
-            opts.options.maintainAspectRatio = false;
-            
-            // Apply current theme palette to config
-            decorateConfig(opts.options);
-            
-            charts[id] = new Chart(el, opts);
-            return charts[id];
-        }
-
-        function getPalette() {
-            const isDark = document.documentElement.classList.contains('dark');
-            return {
-                grid: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(15, 23, 42, 0.05)',
-                tick: isDark ? '#94a3b8' : '#475569',
-                text: isDark ? '#f8fafc' : '#0f172a',
-                bgCard: isDark ? '#1e293b' : '#ffffff',
-                borderCard: isDark ? '#334155' : '#e2e8f0',
-            };
-        }
-
-        function decorateConfig(o) {
-            const colors = getPalette();
-            
-            // Grid and Ticks Styling
-            if (o.scales) {
-                Object.values(o.scales).forEach(s => {
-                    if (s.grid && s.grid._auto) {
-                        s.grid.color = colors.grid;
-                        s.grid.drawBorder = false;
-                    }
-                    if (s.ticks && s.ticks._auto) {
-                        s.ticks.color = colors.tick;
-                        s.ticks.font = {
-                            size: 11,
-                            family: 'Inter, sans-serif',
-                            weight: '500'
-                        };
-                    }
-                });
-            }
-
-            // Legend Styling
-            if (o.plugins && o.plugins.legend) {
-                o.plugins.legend.labels = o.plugins.legend.labels || {};
-                if (o.plugins.legend.labels._auto) {
-                    o.plugins.legend.labels.color = colors.tick;
-                    o.plugins.legend.labels.usePointStyle = true;
-                    o.plugins.legend.labels.pointStyle = 'circle';
-                    o.plugins.legend.labels.padding = 16;
-                    o.plugins.legend.labels.font = {
-                        size: 11,
-                        family: 'Inter, sans-serif',
-                        weight: '600'
-                    };
-                }
-            }
-
-            // High-End Tooltips Styling
-            if (o.plugins && o.plugins.tooltip) {
-                o.plugins.tooltip = Object.assign({
-                    backgroundColor: colors.bgCard,
-                    titleColor: colors.text,
-                    bodyColor: colors.tick,
-                    borderColor: colors.borderCard,
-                    borderWidth: 1,
-                    cornerRadius: 12,
-                    padding: 12,
-                    titleFont: { size: 12, family: 'Inter, sans-serif', weight: '700' },
-                    bodyFont: { size: 12, family: 'Inter, sans-serif' },
-                    boxPadding: 6,
-                    usePointStyle: true,
-                }, o.plugins.tooltip);
-            }
-        }
-
-        function updateChartColors() {
-            const colors = getPalette();
-            Object.values(charts).forEach(c => {
-                decorateConfig(c.options);
-                c.update();
-            });
-        }
-
-        // Helpers to mark parameters as theme-reactive
-        function autoGrid() { return { display: true, _auto: true }; }
-        function autoTicks() { return { _auto: true }; }
-        function autoLegend() { return { labels: { _auto: true } }; }
-    </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  var p=window.location.pathname;
+  document.querySelectorAll('.nav-links a,.mob-menu a').forEach(function(a){
+    if(a.getAttribute('href')===p)a.classList.add('on');
+  });
+  _applyTheme();
+});
+</script>
 </body>
 </html>
