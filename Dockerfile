@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Application code
 COPY app.py config.py project.py README.md ./
 COPY templates/ ./templates/
+COPY static/ ./static/
 
 # NOTE: This container is intentionally run as root inside a private Docker
 # network.  The bind-mounted /app/charts volume is managed by the host and

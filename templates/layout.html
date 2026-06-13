@@ -4,13 +4,48 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}StockScope{% endblock %}</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+{# =========================================================================
+   Self-hosted assets
+   All third-party libraries are bundled locally (see /app/static) so the
+   dashboard renders correctly regardless of CDN reachability — which was
+   the root cause of "no charts" reports when the user's network blocked
+   the CDN.
+   ========================================================================= #}
+<link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/fontawesome.min.css') }}" rel="stylesheet">
+<link rel="preload" href="{{ url_for('static', filename='js/chart.umd.js') }}" as="script">
+<script src="{{ url_for('static', filename='js/chart.umd.js') }}"></script>
 <script>
 window.onerror=function(m,u,l){console.error('JS Error:',m,'Line:',l);};
-function _waitChartJs(cb){if(typeof Chart!=='undefined')cb();else{console.log('Waiting for Chart.js...');setTimeout(function(){_waitChartJs(cb);},200);}}
+
+/* Polyfill old browsers: requestAnimationFrame keeps theme paint in sync */
+window.requestAnimationFrame=window.requestAnimationFrame||function(cb){return setTimeout(cb,16);};
+
+/* Chart.js may still be loading even though the script tag is inline (in
+   rare cases — eg. parse error mid-file).  Poll for up to 5s before giving up
+   and showing a visible inline error inside every <canvas> wrapper. */
+var _chartAttempts=0;
+function _waitChartJs(cb){
+  _chartAttempts++;
+  if(typeof Chart!=='undefined'){cb();return;}
+  if(_chartAttempts>25){
+    /* Render a clear error so we never end up with a "looks empty" page. */
+    var css='chartErr';
+    if(!document.getElementById('chartErrCss')){
+      var s=document.createElement('style');
+      s.id='chartErrCss';
+      s.textContent='.'+css+'{display:flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:200px;color:#ef4444;font:600 .85rem Inter,sans-serif;text-align:center;padding:16px;}';
+      document.head.appendChild(s);
+    }
+    document.querySelectorAll('.cv').forEach(function(c){
+      c.innerHTML='<div class="'+css+'">Charts failed to load (Chart.js). Refresh the page or check the network.</div>';
+    });
+    console.error('Chart.js load timed out after ', _chartAttempts*200, 'ms');
+    return;
+  }
+  setTimeout(function(){_waitChartJs(cb);},200);
+}
 var _charts={};
 function _mk(id,cfg){
   if(typeof Chart==='undefined'){console.error('Chart.js not loaded');return null;}
@@ -75,7 +110,7 @@ function _applyTheme(){
   var ic=document.getElementById('thmIco');
   if(ic){
     ic.className=_t==='dark'?'fa-solid fa-sun':'fa-solid fa-moon';
-    ic.style.color=_t==='dark'?'#f6ad55':'#805ad5';
+    ic.style.color=_t==='dark'?'#f6ad55':'#7c4dff';
   }
   _recolor();
 }
@@ -119,7 +154,7 @@ _applyTheme();
 }
 *{box-sizing:border-box;}
 body{
-  font-family:'Inter',-apple-system,sans-serif;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
   background:var(--bg);color:var(--tx);
   margin:0;min-height:100vh;
   display:flex;flex-direction:column;
@@ -432,7 +467,7 @@ footer{
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
   var p=window.location.pathname;
