@@ -4,6 +4,7 @@ from config import (
     ALLOWED_PERIODS,
     DEFAULT_PERIOD,
     DEFAULT_TICKERS,
+    PERIODS,
     SECTORS,
     is_valid_period,
 )
@@ -43,3 +44,14 @@ def test_allowed_periods_whitelist():
     assert not is_valid_period("999y")
     assert not is_valid_period("")
     assert not is_valid_period("hack")
+    # `1d` is intentionally not whitelisted (a single day yields no return /
+    # volatility); `ytd` is.
+    assert not is_valid_period("1d")
+    assert is_valid_period("ytd")
+
+
+def test_periods_is_single_source_of_truth():
+    """PERIODS (display order) and ALLOWED_PERIODS (membership) must agree."""
+    assert set(PERIODS) == set(ALLOWED_PERIODS)
+    assert len(PERIODS) == len(set(PERIODS))  # no duplicates
+    assert all(is_valid_period(p) for p in PERIODS)
