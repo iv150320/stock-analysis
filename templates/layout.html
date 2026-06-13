@@ -439,7 +439,10 @@ document.addEventListener('DOMContentLoaded',function(){
   document.querySelectorAll('.nav-links a,.mob-menu a').forEach(function(a){
     if(a.getAttribute('href')===p)a.classList.add('on');
   });
-  _applyTheme();
+  // _applyTheme() is already invoked in the <head> script for crisp theming
+  // before any user-visible paint.  Call it here only to refresh the charts
+  // after they have been instantiated on the page.
+  if (typeof _recolor === 'function') _recolor();
 });
 </script>
 </body>

@@ -1,7 +1,20 @@
+"""StockScope analysis engine.
+
+Pure data layer: fetching prices via yfinance, computing returns/volatility,
+and aggregating by sector.  No web / Flask concerns — those live in ``app.py``.
+
+The CLI in :func:`main` is preserved so ``python project.py …`` still works
+for offline report generation and is convenient for the CS50x video demo.
+"""
+
+from __future__ import annotations
+
 import argparse
 import os
+import signal
 import sys
-from datetime import datetime, timedelta
+from contextlib import contextmanager
+from datetime import datetime  # noqa: F401  (kept for backwards compatibility)
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
@@ -10,58 +23,152 @@ import pandas as pd
 import seaborn as sns
 import yfinance as yf
 
+from config import (
+    DEFAULT_PERIOD,
+    DEFAULT_TICKERS,
+    SECTORS,
+    TRADING_DAYS_PER_YEAR,
+    YFINANCE_TIMEOUT,
+    get_default_tickers,
+)
+
 sns.set_theme(style="whitegrid")
 
 
-SECTORS = {
-    "Technology": ["AAPL", "MSFT", "NVDA", "GOOGL", "META", "CRM", "ADBE", "ORCL", "QCOM", "AMD",
-                   "INTC", "TXN", "CSCO", "IBM", "NOW", "AMAT", "MU", "ADI", "ADP", "FIS"],
-    "Finance": ["JPM", "BAC", "WFC", "GS", "MS", "C", "AXP", "BLK", "SCHW", "USB",
-        "PNC", "TFC", "BK", "COF", "SPGI", "MCO", "MET", "AIG", "PRU", "AFL"],
-    "Healthcare": ["UNH", "PFE", "ABBV", "MRK", "ABT", "LLY", "TMO", "JNJ", "BMY", "AMGN",
-                   "CVS", "MDT", "ISRG", "SYK", "GILD", "BSX", "REGN", "VRTX", "CI", "BDX"],
-    "Consumer Cyclical": ["AMZN", "TSLA", "HD", "MCD", "NKE", "SBUX", "LOW", "BKNG", "TGT", "TJX",
-                          "ROST", "GM", "F", "EBAY", "MAR", "HLT", "DRI", "YUM", "CMG", "AZO"],
-    "Energy": ["XOM", "CVX", "COP", "SLB", "EOG", "OXY", "MPC", "PSX", "VLO", "KMI",
-        "HAL", "BKR", "DVN", "FANG", "CTRA", "TRGP", "EQT", "WMB", "OKE", "SU"],
-    "Communication": ["GOOG", "META", "NFLX", "DIS", "CMCSA", "T", "VZ", "CHTR", "TMUS", "EA",
-        "TTWO", "WBD", "OMC", "NWSA", "FOXA", "LYV", "MTCH", "SNAP", "SPOT", "ROKU"],
-    "Industrials": ["CAT", "GE", "BA", "HON", "UNP", "UPS", "RTX", "LMT", "MMM", "GD",
-                    "NOC", "CSX", "FDX", "DE", "CARR", "ETN", "EMR", "ITW", "PAYX", "PH"],
-    "Utilities": ["NEE", "DUK", "SO", "D", "AEP", "SRE", "EXC", "XEL", "ED", "PEG",
-                  "WEC", "AWK", "ES", "DTE", "AEE", "CNP", "EIX", "FE", "CMS", "ATO"],
-}
-
-DEFAULT_TICKERS = [t for sector in SECTORS.values() for t in sector]
+__all__ = [
+    "SECTORS",
+    "DEFAULT_TICKERS",
+    "fetch_data",
+    "calc_returns",
+    "top_performers",
+    "sector_analysis",
+    "run_analysis",
+    "print_report",
+]
 
 
-def fetch_data(tickers, period="1y"):
+# ---------------------------------------------------------------------------
+# Timeout helper (POSIX)
+# ---------------------------------------------------------------------------
+
+class TimeoutError(Exception):
+    """Raised when an operation exceeds its wall-clock budget."""
+
+
+@contextmanager
+def time_limit(seconds: int):
+    """Raise :class:`TimeoutError` after ``seconds`` (POSIX only).
+
+    Used to bound ``yf.download()`` calls so a hung socket doesn't block
+    the Gunicorn worker.
+    """
+    def _handler(signum, frame):  # noqa: ANN001
+        raise TimeoutError(f"operation timed out after {seconds}s")
+
+    old = signal.signal(signal.SIGALRM, _handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old)
+
+
+# ---------------------------------------------------------------------------
+# Data
+# ---------------------------------------------------------------------------
+
+def fetch_data(tickers: list[str], period: str = DEFAULT_PERIOD) -> pd.DataFrame:
+    """Download adjusted close prices for *tickers* over *period*.
+
+    Returns a ``DataFrame`` whose columns are a ``MultiIndex`` of the form
+    ``(Price level, Ticker)`` — this matches the contract used by
+    :func:`calc_returns` below.
+    """
     print(f"Fetching data for {len(tickers)} tickers...", file=sys.stderr)
-    data = yf.download(tickers, period=period, auto_adjust=True, progress=False)
+    try:
+        with time_limit(YFINANCE_TIMEOUT):
+            data = yf.download(
+                tickers,
+                period=period,
+                auto_adjust=True,
+                progress=False,
+                threads=True,
+            )
+    except TimeoutError as exc:
+        print(f"yfinance timed out: {exc}", file=sys.stderr)
+        return pd.DataFrame()
+    except Exception as exc:  # noqa: BLE001
+        print(f"yfinance download error: {exc}", file=sys.stderr)
+        return pd.DataFrame()
+
     if data.empty:
         return data
+
+    # When only one ticker is requested, yfinance returns flat columns.
+    # Normalise so calc_returns can always do data.xs("Close", axis=1, …).
     if not isinstance(data.columns, pd.MultiIndex):
         ticker = tickers[0] if tickers else "?"
         data.columns = pd.MultiIndex.from_product([[ticker], data.columns])
+
     return data
 
 
-def calc_returns(data):
+def calc_returns(data: pd.DataFrame):
+    """Derive ``(prices, returns, total_return, volatility)`` from raw data.
+
+    * ``prices``        — wide ``DataFrame`` of close prices, one col/ticker
+    * ``returns``       — daily percentage changes
+    * ``total_return``  — period return per ticker
+    * ``volatility``    — annualised standard deviation of daily returns
+    """
+    if data.empty:
+        empty = pd.Series(dtype=float)
+        return data, empty, empty, empty
+
     prices = data.xs("Close", axis=1, level="Price")
-    returns = prices.ffill().pct_change(fill_method=None)
-    total_return = (prices.ffill().iloc[-1] - prices.ffill().iloc[0]) / prices.ffill().iloc[0]
-    volatility = returns.std() * np.sqrt(252)
+    clean = prices.ffill()
+    returns = clean.pct_change()  # pandas >=2.0: `fill_method` arg is gone
+    first, last = clean.iloc[0], clean.iloc[-1]
+    total_return = (last - first) / first
+    volatility = returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR)
     return prices, returns, total_return, volatility
 
 
-def top_performers(total_return, n=10):
-    sorted_ret = total_return.sort_values(ascending=False)
-    best = sorted_ret.head(n)
-    worst = sorted_ret.tail(n)
+def top_performers(total_return: pd.Series, n: int = 10):
+    """Return ``(best, worst)`` — both already sorted desc by return."""
+    ordered = total_return.dropna().sort_values(ascending=False)
+    best = ordered.head(n)
+    worst = ordered.tail(n).sort_values(ascending=False)
     return best, worst
 
 
-def plot_top_performers(best, worst, output_dir):
+def sector_analysis(prices: pd.DataFrame):
+    """Mean constituent price per sector.
+
+    Returns ``(total, vol, sector_df)``.  ``total`` / ``vol`` are
+    ``pd.Series`` indexed by sector name.
+    """
+    sector_map: dict[str, pd.Series] = {}
+    for sector, tickers in SECTORS.items():
+        valid = [t for t in tickers if t in prices.columns]
+        if valid:
+            sector_map[sector] = prices[valid].mean(axis=1)
+
+    sector_df = pd.DataFrame(sector_map)
+    sector_returns = sector_df.ffill().pct_change()
+    total = (sector_df.ffill().iloc[-1] - sector_df.ffill().iloc[0]) / sector_df.ffill().iloc[0]
+    vol = sector_returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR)
+    return total, vol, sector_df
+
+
+# ---------------------------------------------------------------------------
+# Plot helpers (CLI only — the web app uses Chart.js)
+# ---------------------------------------------------------------------------
+
+def plot_top_performers(best: pd.Series, worst: pd.Series, output_dir: str) -> str | None:
+    if best.empty and worst.empty:
+        return None
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
     colors_best = ["#2ecc71" if v > 0 else "#e74c3c" for v in best.values]
@@ -91,21 +198,9 @@ def plot_top_performers(best, worst, output_dir):
     return path
 
 
-def sector_analysis(prices):
-    sector_map = {}
-    for sector, tickers in SECTORS.items():
-        valid = [t for t in tickers if t in prices.columns]
-        if valid:
-            sector_map[sector] = prices[valid].mean(axis=1)
-
-    sector_df = pd.DataFrame(sector_map)
-    sector_returns = sector_df.ffill().pct_change()
-    total = (sector_df.ffill().iloc[-1] - sector_df.ffill().iloc[0]) / sector_df.ffill().iloc[0]
-    vol = sector_returns.std() * np.sqrt(252)
-    return total, vol, sector_df
-
-
-def plot_sector_performance(sector_ret, sector_vol, output_dir):
+def plot_sector_performance(sector_ret, sector_vol, output_dir: str) -> str | None:
+    if sector_ret.empty:
+        return None
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
     colors = ["#2ecc71" if v > 0 else "#e74c3c" for v in sector_ret.values]
@@ -133,7 +228,9 @@ def plot_sector_performance(sector_ret, sector_vol, output_dir):
     return path
 
 
-def plot_correlation_heatmap(sector_df, output_dir):
+def plot_correlation_heatmap(sector_df, output_dir: str) -> str | None:
+    if sector_df.empty or sector_df.shape[1] < 2:
+        return None
     corr = sector_df.ffill().pct_change().corr()
 
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -150,7 +247,7 @@ def plot_correlation_heatmap(sector_df, output_dir):
     return path
 
 
-def plot_price_with_ma(prices, ticker, output_dir):
+def plot_price_with_ma(prices, ticker: str, output_dir: str) -> str | None:
     if ticker not in prices.columns:
         print(f"{ticker} not found in data", file=sys.stderr)
         return None
@@ -170,7 +267,9 @@ def plot_price_with_ma(prices, ticker, output_dir):
     return path
 
 
-def plot_volatility(volatility, output_dir, n=20):
+def plot_volatility(volatility: pd.Series, output_dir: str, n: int = 20) -> str | None:
+    if volatility.empty:
+        return None
     top_vol = volatility.sort_values(ascending=False).head(n)
 
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -195,49 +294,62 @@ def print_report(total_return, volatility, sector_ret, sector_vol, period):
     print(f"  S&P 500 STOCK ANALYSIS REPORT ({period})")
     print("=" * 70)
 
-    print(f"\nTop 5 Best Performers:")
+    print("\nTop 5 Best Performers:")
     best = total_return.sort_values(ascending=False).head(5)
     for ticker, ret in best.items():
         print(f"  {ticker:>6s}: {ret * 100:>+6.2f}%")
 
-    print(f"\nTop 5 Worst Performers:")
-    worst = total_return.sort_values(ascending=False).tail(5)
+    print("\nTop 5 Worst Performers:")
+    worst = total_return.sort_values(ascending=True).head(5)
     for ticker, ret in worst.items():
         print(f"  {ticker:>6s}: {ret * 100:>+6.2f}%")
 
-    print(f"\nSector Performance:")
+    print("\nSector Performance:")
     for sector in sector_ret.sort_values(ascending=False).index:
         r = sector_ret[sector] * 100
         v = sector_vol[sector] * 100
         print(f"  {sector:<20s}: {r:>+6.2f}%  (volatility: {v:>5.2f}%)")
 
-    print(f"\nMost Volatile Stocks (Top 5):")
+    print("\nMost Volatile Stocks (Top 5):")
     top_vol = volatility.sort_values(ascending=False).head(5)
-    for ticker, vol in top_vol.items():
-        print(f"  {ticker:>6s}: {vol * 100:>5.2f}%")
+    for ticker, vol_v in top_vol.items():
+        print(f"  {ticker:>6s}: {vol_v * 100:>5.2f}%")
 
-    print(f"\nLeast Volatile Stocks (Top 5):")
+    print("\nLeast Volatile Stocks (Top 5):")
     bottom_vol = volatility.sort_values(ascending=True).head(5)
-    for ticker, vol in bottom_vol.items():
-        print(f"  {ticker:>6s}: {vol * 100:>5.2f}%")
+    for ticker, vol_v in bottom_vol.items():
+        print(f"  {ticker:>6s}: {vol_v * 100:>5.2f}%")
 
     market_avg_ret = total_return.mean() * 100
     market_avg_vol = volatility.mean() * 100
-    print(f"\nMarket Average:")
+    print("\nMarket Average:")
     print(f"  Average Return:  {market_avg_ret:>+6.2f}%")
     print(f"  Average Volatility: {market_avg_vol:>5.2f}%")
 
-    n_positive = (total_return > 0).sum()
-    n_negative = (total_return <= 0).sum()
-    print(f"\nBreadth:")
+    n_positive = int((total_return > 0).sum())
+    n_negative = int((total_return <= 0).sum())
+    total_count = n_positive + n_negative
+    print("\nBreadth:")
     print(f"  Stocks Up:    {n_positive}")
     print(f"  Stocks Down:  {n_negative}")
-    print(f"  {n_positive / (n_positive + n_negative) * 100:>5.1f}% of stocks positive")
+    if total_count:
+        print(f"  {n_positive / total_count * 100:>5.1f}% of stocks positive")
     print("=" * 70)
     print()
 
 
-def run_analysis(tickers=None, sector=None, period="1y", output_dir="charts", generate_charts=True):
+# ---------------------------------------------------------------------------
+# Orchestration
+# ---------------------------------------------------------------------------
+
+def run_analysis(
+    tickers: list[str] | None = None,
+    sector: str | None = None,
+    period: str = DEFAULT_PERIOD,
+    output_dir: str = "charts",
+    generate_charts: bool = True,
+):
+    """Run the full analysis pipeline.  Returns ``(result_dict, error_str)``."""
     if tickers:
         pass
     elif sector:
@@ -245,7 +357,7 @@ def run_analysis(tickers=None, sector=None, period="1y", output_dir="charts", ge
             return None, f"Unknown sector: {sector}"
         tickers = SECTORS[sector]
     else:
-        tickers = DEFAULT_TICKERS
+        tickers = get_default_tickers()
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -253,13 +365,13 @@ def run_analysis(tickers=None, sector=None, period="1y", output_dir="charts", ge
     if data.empty:
         return None, "No data fetched. Check ticker symbols or internet connection."
 
-    prices, returns, total_return, volatility = calc_returns(data)
+    prices, _, total_return, volatility = calc_returns(data)
     total_return = total_return.dropna()
     volatility = volatility.dropna()
 
     sector_ret, sector_vol, sector_df = sector_analysis(prices)
 
-    charts = {}
+    charts: dict = {}
     if generate_charts:
         top_best, top_worst = top_performers(total_return)
         charts["top_performers"] = plot_top_performers(top_best, top_worst, output_dir)
@@ -279,6 +391,10 @@ def run_analysis(tickers=None, sector=None, period="1y", output_dir="charts", ge
     return result, None
 
 
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
 def main():
     parser = argparse.ArgumentParser(
         description="S&P 500 Stock Analysis Tool",
@@ -289,9 +405,9 @@ Examples:
   python project.py --sector Technology --period 1y
   python project.py --ticker AAPL --period 3mo
   python project.py --all-charts
-        """
+        """,
     )
-    parser.add_argument("--period", default="1y",
+    parser.add_argument("--period", default=DEFAULT_PERIOD,
                         help="Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, max)")
     parser.add_argument("--sector", help=f"Analyze a specific sector: {', '.join(SECTORS.keys())}")
     parser.add_argument("--ticker", help="Analyze a single ticker")
@@ -308,9 +424,13 @@ Examples:
             print(f"Unknown sector: {args.sector}", file=sys.stderr)
             sys.exit(1)
 
-    result, error = run_analysis(tickers=tickers, sector=args.sector,
-                                  period=args.period, output_dir=args.output,
-                                  generate_charts=not args.no_charts)
+    result, error = run_analysis(
+        tickers=tickers,
+        sector=args.sector,
+        period=args.period,
+        output_dir=args.output,
+        generate_charts=not args.no_charts,
+    )
     if error:
         print(error, file=sys.stderr)
         sys.exit(1)

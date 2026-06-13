@@ -51,7 +51,7 @@
 </div>
 {% endif %}
 
-{% if ret is not none and symbol %}
+{% if (ret is not none or has_chart_data) and symbol %}
 <div class="row g-3 mb-4">
   <div class="col-md-4 ani d1">
     <div class="card-s stat-c" style="height:100%;">
