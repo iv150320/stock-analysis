@@ -48,7 +48,7 @@ python project.py --period 1mo --no-charts
 ### CLI Arguments
 | Argument | Description | Default |
 |----------|-------------|---------|
-| `--period` | Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, max) | `1y` |
+| `--period` | Data period (5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max) | `1y` |
 | `--sector` | Sector name | all sectors |
 | `--ticker` | Single stock symbol | all stocks |
 | `--output` | Charts output directory | `charts` |

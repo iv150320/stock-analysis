@@ -14,10 +14,13 @@ from typing import Final
 # Flask
 # ---------------------------------------------------------------------------
 
-SECRET_KEY: Final[str] = os.environ.get(
-    "STOCKSCOPE_SECRET_KEY",
-    "cs50-final-project-dev-only-change-in-prod",
-)
+_DEFAULT_SECRET_KEY: Final[str] = "cs50-final-project-dev-only-change-in-prod"
+
+SECRET_KEY: Final[str] = os.environ.get("STOCKSCOPE_SECRET_KEY", _DEFAULT_SECRET_KEY)
+
+# True when the app is falling back to the built-in dev key (i.e. no
+# STOCKSCOPE_SECRET_KEY was provided).  app.py warns about this in production.
+USING_DEFAULT_SECRET: Final[bool] = SECRET_KEY == _DEFAULT_SECRET_KEY
 
 DEBUG: Final[bool] = os.environ.get("FLASK_DEBUG", "0") == "1"
 
@@ -37,10 +40,13 @@ CACHE_MAX_ENTRIES: Final[int] = int(os.environ.get("STOCKSCOPE_CACHE_MAX", "128"
 # Data source
 # ---------------------------------------------------------------------------
 
-# Whitelist of periods accepted by yfinance.download
-ALLOWED_PERIODS: Final[frozenset[str]] = frozenset({
+# Periods accepted by yfinance.download, in display order.  This tuple is the
+# single source of truth: ``ALLOWED_PERIODS`` (membership checks), the CLI
+# ``--period`` help text, and the README all derive from it.
+PERIODS: Final[tuple[str, ...]] = (
     "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max",
-})
+)
+ALLOWED_PERIODS: Final[frozenset[str]] = frozenset(PERIODS)
 DEFAULT_PERIOD: Final[str] = "1y"
 
 # yfinance download / HTTP timeout (seconds)

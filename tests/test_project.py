@@ -7,12 +7,13 @@ match the MultiIndex shape produced by yfinance.
 """
 
 import math
+import threading
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from project import calc_returns, sector_analysis, top_performers
+from project import calc_returns, sector_analysis, time_limit, top_performers
 
 
 # ---------------------------------------------------------------------------
@@ -81,6 +82,30 @@ def test_top_performers_worst_is_correct_order():
     assert set(worst.index) == {"C", "D"}
     # and now sorted descending (matches the original CLI plot convention)
     assert worst.iloc[0] >= worst.iloc[-1]
+
+
+def test_time_limit_runs_off_main_thread():
+    """SIGALRM can't be armed outside the main thread; ``time_limit`` must
+    degrade to a no-op there instead of raising ``ValueError``.
+    """
+    errors: list[BaseException] = []
+
+    def worker():
+        try:
+            with time_limit(5):
+                _ = sum(range(1000))
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    t = threading.Thread(target=worker)
+    t.start()
+    t.join()
+    assert errors == []
+
+
+def test_time_limit_main_thread_no_error():
+    with time_limit(5):
+        _ = sum(range(1000))
 
 
 def test_sector_analysis_keys_present():

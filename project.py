@@ -26,11 +26,18 @@ import yfinance as yf
 from config import (
     DEFAULT_PERIOD,
     DEFAULT_TICKERS,
+    PERIODS,
     SECTORS,
     TRADING_DAYS_PER_YEAR,
     YFINANCE_TIMEOUT,
     get_default_tickers,
+    is_valid_period,
 )
+
+# SIGALRM is POSIX-only and can only be armed from the main thread.  Detect
+# support once so :func:`time_limit` can degrade to a no-op elsewhere (e.g.
+# Windows, or a WSGI server that handles requests off the main thread).
+_HAS_SIGALRM = hasattr(signal, "SIGALRM")
 
 sns.set_theme(style="whitegrid")
 
@@ -57,15 +64,27 @@ class TimeoutError(Exception):
 
 @contextmanager
 def time_limit(seconds: int):
-    """Raise :class:`TimeoutError` after ``seconds`` (POSIX only).
+    """Bound a block to ``seconds`` of wall-clock time (POSIX main thread).
 
     Used to bound ``yf.download()`` calls so a hung socket doesn't block
-    the Gunicorn worker.
+    the Gunicorn worker.  Where ``SIGALRM`` is unavailable (Windows) or the
+    handler can't be armed (not the main thread), this degrades gracefully
+    to a no-op rather than raising ``ValueError``/``AttributeError``.
     """
     def _handler(signum, frame):  # noqa: ANN001
         raise TimeoutError(f"operation timed out after {seconds}s")
 
-    old = signal.signal(signal.SIGALRM, _handler)
+    if not _HAS_SIGALRM:
+        yield
+        return
+
+    try:
+        old = signal.signal(signal.SIGALRM, _handler)
+    except ValueError:
+        # Not running in the main thread — can't install a signal handler.
+        yield
+        return
+
     signal.alarm(seconds)
     try:
         yield
@@ -408,13 +427,20 @@ Examples:
         """,
     )
     parser.add_argument("--period", default=DEFAULT_PERIOD,
-                        help="Data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, max)")
+                        help=f"Data period; one of: {', '.join(PERIODS)}")
     parser.add_argument("--sector", help=f"Analyze a specific sector: {', '.join(SECTORS.keys())}")
     parser.add_argument("--ticker", help="Analyze a single ticker")
     parser.add_argument("--output", default="charts", help="Output directory for charts")
     parser.add_argument("--all-charts", action="store_true", help="Generate all chart types")
     parser.add_argument("--no-charts", action="store_true", help="Skip chart generation")
     args = parser.parse_args()
+
+    if not is_valid_period(args.period):
+        print(
+            f"Invalid period: {args.period}. Choose one of: {', '.join(PERIODS)}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     tickers = None
     if args.ticker:

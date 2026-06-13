@@ -14,9 +14,11 @@ yfinance on every page reload while still picking up new data every
 from __future__ import annotations
 
 import json
+import logging
+import math
 import time
 from collections import OrderedDict
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, Sequence, TypeVar
 
 import pandas as pd
 from flask import Flask, render_template, request
@@ -30,9 +32,12 @@ from config import (
     CACHE_DURATION,
     CACHE_MAX_ENTRIES,
     DEFAULT_PERIOD,
+    USING_DEFAULT_SECRET,
     is_valid_period,
 )
 from project import run_analysis
+
+logger = logging.getLogger(__name__)
 
 
 T = TypeVar("T")
@@ -44,6 +49,14 @@ T = TypeVar("T")
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
+
+# Loudly flag the built-in dev key when running outside debug, so a production
+# deploy that forgot to set STOCKSCOPE_SECRET_KEY doesn't ship a public secret.
+if USING_DEFAULT_SECRET and not DEBUG:
+    logger.warning(
+        "STOCKSCOPE_SECRET_KEY is unset; using the built-in development key. "
+        "Set STOCKSCOPE_SECRET_KEY before deploying to production."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -113,12 +126,14 @@ def to_json(obj: Any) -> str:
 
 
 def safe_round(value: Any, ndigits: int = 2) -> float | None:
-    """Round *value* if it's numeric; return ``None`` for NaN/None."""
+    """Round *value* if it's finite & numeric; return ``None`` for NaN/inf/None."""
     if value is None:
         return None
     try:
         out = round(float(value), ndigits)
     except (TypeError, ValueError):
+        return None
+    if not math.isfinite(out):
         return None
     return out
 
@@ -126,6 +141,18 @@ def safe_round(value: Any, ndigits: int = 2) -> float | None:
 def normalise_period(raw: str | None) -> str:
     """Reject unknown periods; fall back to default rather than crashing."""
     return raw if raw and is_valid_period(raw) else DEFAULT_PERIOD
+
+
+def mean_ignore_none(values: Sequence[float | None], ndigits: int = 2) -> float:
+    """Average *values*, skipping ``None`` entries (``safe_round`` may emit them).
+
+    Returns ``0`` when there's nothing numeric to average, so callers never have
+    to guard against ``TypeError`` from ``sum(... None ...)`` or an empty list.
+    """
+    nums = [v for v in values if v is not None]
+    if not nums:
+        return 0
+    return round(sum(nums) / len(nums), ndigits)
 
 
 # ---------------------------------------------------------------------------
@@ -230,14 +257,8 @@ def sector():
             })
     stocks_list.sort(key=lambda x: (x["return"] is None, -(x["return"] or 0.0)))
 
-    avg_ret = (
-        round(sum(s["return"] for s in stocks_list) / len(stocks_list), 2)
-        if stocks_list else 0
-    )
-    avg_vol = (
-        round(sum(s["volatility"] for s in stocks_list) / len(stocks_list), 2)
-        if stocks_list else 0
-    )
+    avg_ret = mean_ignore_none([s["return"] for s in stocks_list])
+    avg_vol = mean_ignore_none([s["volatility"] for s in stocks_list])
 
     return render_template(
         "sector.html",
